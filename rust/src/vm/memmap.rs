@@ -5,12 +5,13 @@ pub struct MemMap {
 }
 
 pub fn create_memmap() -> MemMap {
-  let map = MemMap {
+  let mut map = MemMap {
     mem: mem::create(),
   };
   // Init directional and port bits
-  map.set_byte(0, 0xff);
-  map.set_byte(1, 0x07);
+  map.set_byte(0, 0x2f);
+  map.set_byte(1, 0x37);
+  return map;
 }
 
 impl MemMap {

@@ -19,7 +19,7 @@ pub fn run_ms(&mut self, ms: u32) {
   let mut ran = 0;
   while ran < cycles {
     let step_time = self.step();
-    ran += step_time;
+    ran += step_time as u32;
   }
 }
 }

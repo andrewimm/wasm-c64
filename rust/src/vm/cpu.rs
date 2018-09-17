@@ -46,17 +46,13 @@ pub fn create_cpu() -> CPU {
 }
 
 impl CPU {
-  pub fn reset(&mut self) {
+  pub fn reset(&mut self, mem: MemMap) {
     self.acc = 0;
     self.x = 0;
     self.y = 0;
     self.status = 0;
-    self.pc = 0;
-    self.stack = 0;
-  }
+    self.stack = 0xfd;
 
-  pub fn init(&mut self, mem: &mut MemMap) {
-    // Run any setup for the registers
     let pc_low = mem.get_byte(0xfffc) as u16;
     let pc_high = mem.get_byte(0xfffd) as u16;
     self.pc = (pc_high << 8) | pc_low;
