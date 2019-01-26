@@ -1977,6 +1977,16 @@ mod tests {
   use vm::memmap::create_memmap;
 
   #[test]
+  fn adc() {
+    let mut cpu = create_cpu();
+    cpu.adc(0, 0);
+    assert!(cpu.acc == 0);
+    assert!(cpu.status & (1 << 7) == 0); // negative
+    assert!(cpu.status & (1 << 1) == 1 << 1); // zero
+    assert!(cpu.status & 1 == 0); // carry
+  }
+
+  #[test]
   fn compare() {
     let mut cpu = create_cpu();
     cpu.compare(0xf, 0x4);

@@ -17,3 +17,30 @@ pub fn create() -> Mem {
     basic: box [0; 0x2000],
   };
 }
+
+impl Mem {
+  pub fn kernal_ptr(&mut self) -> *mut u8 {
+    let ptr = &mut self.kernal[0] as *mut u8;
+    return ptr;
+  }
+
+  pub fn char_ptr(&mut self) -> *mut u8 {
+    let ptr = &mut self.char_gen[0] as *mut u8;
+    return ptr;
+  }
+
+  pub fn basic_ptr(&mut self) -> *mut u8 {
+    let ptr = &mut self.basic[0] as *mut u8;
+    return ptr;
+  }
+
+  pub fn color_ptr(&mut self) -> *mut u8 {
+    let ptr = &mut self.color_ram[0] as *mut u8;
+    return ptr;
+  }
+
+  pub fn ram_ptr(&mut self) -> *mut u8 {
+    let ptr = &mut self.ram[0] as *mut u8;
+    return ptr;
+  }
+}

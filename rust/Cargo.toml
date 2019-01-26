@@ -6,5 +6,4 @@ authors = ["Andrew Imm <aimm22@gmail.com>"]
 [lib]
 name = "rustc64lib"
 path = "src/lib.rs"
-[target.wasm32-unknown-unknown.lib]
 crate-type = ["cdylib"]
