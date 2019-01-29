@@ -99,4 +99,10 @@ impl MemMap {
     }
     self.mem.ram[addr as usize] = value;
   }
+
+  pub fn set_basic_rom(&mut self, bytes: Vec<u8>, offset: usize) {
+    for i in 0..bytes.len() {
+      self.mem.basic[i + offset] = bytes[i];
+    }
+  }
 }

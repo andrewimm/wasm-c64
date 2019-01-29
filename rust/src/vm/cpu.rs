@@ -58,6 +58,10 @@ impl CPU {
     self.pc = (pc_high << 8) | pc_low;
   }
 
+  pub fn set_pc(&mut self, pc: u16) {
+    self.pc = pc;
+  }
+
   pub fn get_register(&self, reg: Register) -> u8 {
     match reg {
       Register::Acc => self.acc,
