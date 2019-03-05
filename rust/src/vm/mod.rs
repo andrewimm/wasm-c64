@@ -29,6 +29,10 @@ pub fn run_ms(&mut self, ms: u32) {
     ran += step_time as u32;
   }
 }
+
+pub fn reset(&mut self) {
+  self.cpu.reset(&self.mem);
+}
 }
 
 #[cfg(test)]

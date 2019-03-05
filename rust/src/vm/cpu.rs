@@ -46,7 +46,7 @@ pub fn create_cpu() -> CPU {
 }
 
 impl CPU {
-  pub fn reset(&mut self, mem: MemMap) {
+  pub fn reset(&mut self, mem: &MemMap) {
     self.acc = 0;
     self.x = 0;
     self.y = 0;
@@ -60,6 +60,10 @@ impl CPU {
 
   pub fn set_pc(&mut self, pc: u16) {
     self.pc = pc;
+  }
+
+  pub fn get_pc(&self) -> u16 {
+    return self.pc;
   }
 
   pub fn get_register(&self, reg: Register) -> u8 {
@@ -168,13 +172,18 @@ impl CPU {
   #[inline]
   pub fn get_addr_indexed_indirect(&self, mem: &MemMap) -> u16 {
     let src = (mem.get_byte(self.pc + 1) as u16).wrapping_add(self.x as u16);
-    mem.get_byte(src) as u16
+    let low = mem.get_byte(src) as u16;
+    let high = mem.get_byte(src + 1) as u16;
+    (low | (high << 8))
   }
 
   #[inline]
   pub fn get_addr_indirect_indexed(&self, mem: &MemMap) -> u16 {
     let src = mem.get_byte(self.pc + 1) as u16;
-    (mem.get_byte(src) as u16).wrapping_add(self.y as u16)
+    let low = mem.get_byte(src) as u16;
+    let high = mem.get_byte(src + 1) as u16;
+    let pointer = low | (high << 8);
+    pointer.wrapping_add(self.y as u16)
   }
 
   #[inline]
@@ -329,7 +338,7 @@ impl CPU {
         if self.status & FLAG_N == 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -598,7 +607,7 @@ impl CPU {
         if self.status & FLAG_N > 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -827,7 +836,7 @@ impl CPU {
         if self.status & FLAG_V == 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -1062,7 +1071,7 @@ impl CPU {
         if self.status & FLAG_V > 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -1264,7 +1273,7 @@ impl CPU {
         if self.status & FLAG_C == 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -1465,7 +1474,7 @@ impl CPU {
         if self.status & FLAG_C > 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -1635,7 +1644,7 @@ impl CPU {
 
       0xca => { // DEX
         let result = self.x.wrapping_sub(1);
-        self.y = result;
+        self.x = result;
         self.test_flags_n_z(result);
         (1, 2)
       },
@@ -1676,7 +1685,7 @@ impl CPU {
         if self.status & FLAG_Z == 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -1873,7 +1882,7 @@ impl CPU {
         if self.status & FLAG_Z > 0 {
           let addr_offset = mem.get_byte(self.pc + 1);
           self.jump_pc(addr_offset);
-          (0, 3)
+          (2, 3)
         } else {
           (2, 2)
         }
@@ -2061,6 +2070,32 @@ mod tests {
   }
 
   #[test]
+  fn address_indirect_indexed() {
+    let mut cpu = create_cpu();
+    let mut mem = create_memmap();
+    cpu.pc = 0x140;
+    mem.set_byte(0x141, 0xa0);
+    mem.set_byte(0xa0, 0x43);
+    cpu.y = 0x7;
+    assert_eq!(cpu.get_addr_indirect_indexed(&mem), 0x4a);
+    mem.set_byte(0xa1, 0x01);
+    assert_eq!(cpu.get_addr_indirect_indexed(&mem), 0x14a);
+  }
+
+  #[test]
+  fn address_indexed_indirect() {
+    let mut cpu = create_cpu();
+    let mut mem = create_memmap();
+    cpu.pc = 0x140;
+    mem.set_byte(0x141, 0xa0);
+    mem.set_byte(0xa5, 0x23);
+    cpu.x = 0x5;
+    assert_eq!(cpu.get_addr_indexed_indirect(&mem), 0x23);
+    mem.set_byte(0xa6, 0x20);
+    assert_eq!(cpu.get_addr_indexed_indirect(&mem), 0x2023);
+  }
+
+  #[test]
   fn instruction_0x00() {
     let mut cpu = create_cpu();
     let mut mem = create_memmap();
@@ -2128,12 +2163,12 @@ mod tests {
     mem.set_byte(0x1000, 0x10);
     mem.set_byte(0x1001, 0x05);
     cpu.step(&mut mem);
-    assert_eq!(cpu.pc, 0x1005);
-    cpu.status = 1 << 7;
-    mem.set_byte(0x1005, 0x10);
-    mem.set_byte(0x1006, 0x05);
-    cpu.step(&mut mem);
     assert_eq!(cpu.pc, 0x1007);
+    cpu.status = 1 << 7;
+    mem.set_byte(0x1007, 0x10);
+    mem.set_byte(0x1008, 0x05);
+    cpu.step(&mut mem);
+    assert_eq!(cpu.pc, 0x1009);
   }
 
   #[test]
