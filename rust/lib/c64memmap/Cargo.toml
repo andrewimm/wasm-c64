@@ -2,3 +2,6 @@
 name = "c64memmap"
 version = "0.1.0"
 authors = ["Andrew Imm <aimm22@gmail.com>"]
+
+[dependencies]
+mos6510 = {path = "../mos6510"}

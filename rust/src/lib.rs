@@ -1,17 +1,11 @@
-#![feature(box_syntax)]
-
 pub mod vm;
 
 use std::mem;
 use vm::VM;
-use vm::cpu::Register;
 
 #[no_mangle]
 pub fn create_vm() -> *mut VM {
-  let vm = VM {
-    cpu: vm::cpu::create_cpu(),
-    mem: vm::memmap::create_memmap(),
-  };
+  let vm = VM::new();
   let b = Box::new(vm);
   return Box::into_raw(b);
 }
@@ -29,7 +23,7 @@ pub fn reset(raw: *mut VM) {
 pub fn get_char_pointer(raw: *mut VM) -> *mut u8 {
   unsafe {
     let mut vm = Box::from_raw(raw);
-    let ptr = vm.mem.mem.char_ptr();
+    let ptr = vm.mem.ram_rom.char_ptr();
     mem::forget(vm);
     return ptr;
   }
@@ -39,7 +33,7 @@ pub fn get_char_pointer(raw: *mut VM) -> *mut u8 {
 pub fn get_kernal_pointer(raw: *mut VM) -> *mut u8 {
   unsafe {
     let mut vm = Box::from_raw(raw);
-    let ptr = vm.mem.mem.kernal_ptr();
+    let ptr = vm.mem.ram_rom.kernal_ptr();
     mem::forget(vm);
     return ptr;
   }
@@ -49,7 +43,7 @@ pub fn get_kernal_pointer(raw: *mut VM) -> *mut u8 {
 pub fn get_basic_pointer(raw: *mut VM) -> *mut u8 {
   unsafe {
     let mut vm = Box::from_raw(raw);
-    let ptr = vm.mem.mem.basic_ptr();
+    let ptr = vm.mem.ram_rom.basic_ptr();
     mem::forget(vm);
     return ptr;
   }
@@ -59,7 +53,7 @@ pub fn get_basic_pointer(raw: *mut VM) -> *mut u8 {
 pub fn get_ram_pointer(raw: *mut VM) -> *mut u8 {
   unsafe {
     let mut vm = Box::from_raw(raw);
-    let ptr = vm.mem.mem.ram_ptr();
+    let ptr = vm.mem.ram_rom.ram_ptr();
     mem::forget(vm);
     return ptr;
   }
@@ -69,7 +63,7 @@ pub fn get_ram_pointer(raw: *mut VM) -> *mut u8 {
 pub fn get_color_pointer(raw: *mut VM) -> *mut u8 {
   unsafe {
     let mut vm = Box::from_raw(raw);
-    let ptr = vm.mem.mem.color_ptr();
+    let ptr = vm.mem.ram_rom.color_ptr();
     mem::forget(vm);
     return ptr;
   }
@@ -99,12 +93,12 @@ pub fn get_register(raw: *mut VM, register: u32) -> u16 {
   unsafe {
     let vm = Box::from_raw(raw);
     let value = match register {
-      0 => vm.cpu.get_register(Register::Acc) as u16,
-      1 => vm.cpu.get_register(Register::X) as u16,
-      2 => vm.cpu.get_register(Register::Y) as u16,
-      3 => vm.cpu.get_register(Register::Status) as u16,
-      4 => vm.cpu.get_register(Register::Stack) as u16,
-      5 => vm.cpu.get_pc(),
+      0 => vm.cpu.acc as u16,
+      1 => vm.cpu.x as u16,
+      2 => vm.cpu.y as u16,
+      3 => vm.cpu.status as u16,
+      4 => vm.cpu.stack as u16,
+      5 => vm.cpu.pc,
       _ => 0,
     };
     mem::forget(vm);

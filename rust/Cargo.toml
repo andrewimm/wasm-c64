@@ -7,3 +7,7 @@ authors = ["Andrew Imm <aimm22@gmail.com>"]
 name = "rustc64lib"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
+
+[dependencies]
+c64memmap = {path = "lib/c64memmap"}
+mos6510 = {path = "lib/mos6510"}

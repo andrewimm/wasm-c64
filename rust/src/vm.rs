@@ -1,19 +1,21 @@
-pub mod cpu;
-pub mod mem;
-pub mod memmap;
+extern crate mos6510;
+extern crate c64memmap;
+
+use self::mos6510::cpu::CPU;
+use self::c64memmap::memmap::MemMap;
 
 const CYCLES_PER_MS: u32 = 1023;
 
 pub struct VM {
-  pub cpu: cpu::CPU,
-  pub mem: memmap::MemMap,
+  pub cpu: CPU,
+  pub mem: MemMap,
 }
 
 impl VM {
 pub fn new() -> VM {
   VM {
-    cpu: cpu::create_cpu(),
-    mem: memmap::create_memmap(),
+    cpu: CPU::new(),
+    mem: MemMap::new(),
   }
 }
 
@@ -38,7 +40,7 @@ pub fn reset(&mut self) {
 #[cfg(test)]
 mod tests {
   use vm::VM;
-  use vm::cpu::Register;
+  use vm::mos6510::memory::Memory;
 
   #[test]
   fn basic_ops() {
@@ -47,11 +49,11 @@ mod tests {
       0xa9, 0x22, // LDA #$22
       0x69, 0x11, // ADC #$11
     ], 0);
-    vm.cpu.set_pc(0xa000);
+    vm.cpu.pc = 0xa000;
     vm.cpu.step(&mut vm.mem);
-    assert_eq!(vm.cpu.get_register(Register::Acc), 0x22);
+    assert_eq!(vm.cpu.acc, 0x22);
     vm.cpu.step(&mut vm.mem);
-    assert_eq!(vm.cpu.get_register(Register::Acc), 0x33);
+    assert_eq!(vm.cpu.acc, 0x33);
   }
 
   #[test]
@@ -62,11 +64,11 @@ mod tests {
       0x8d, 0x05, 0x20, // STA #$2005
       0xac, 0x05, 0x20, // LDY #$2005
     ], 0);
-    vm.cpu.set_pc(0xa000);
+    vm.cpu.pc = 0xa000;
     vm.cpu.step(&mut vm.mem);
     vm.cpu.step(&mut vm.mem);
     assert_eq!(vm.mem.get_byte(0x2005), 0x40);
     vm.cpu.step(&mut vm.mem);
-    assert_eq!(vm.cpu.get_register(Register::Y), 0x40);
+    assert_eq!(vm.cpu.y, 0x40);
   }
 }

@@ -1,7 +1,10 @@
+extern crate mos6510;
+
 use cia::CIA;
 use ramrom::RamRom;
 use sid::SID;
 use vic::VIC;
+use self::mos6510::memory::Memory;
 
 pub struct MemMap {
   pub ram_rom: RamRom,
@@ -10,21 +13,8 @@ pub struct MemMap {
   pub vic: VIC,
 }
 
-pub fn create_memmap() -> MemMap {
-  let mut map = MemMap {
-    ram_rom: RamRom::new(),
-    cia: CIA::new(),
-    sid: SID::new(),
-    vic: VIC::new(),
-  };
-  // Init directional and port bits
-  map.set_byte(0, 0x2f);
-  map.set_byte(1, 0x37);
-  return map;
-}
-
-impl MemMap {
-  pub fn get_byte(&self, addr: u16) -> u8 {
+impl Memory for MemMap {
+  fn get_byte(&self, addr: u16) -> u8 {
     let port = self.ram_rom.ram[1];
     if addr < 0xa000 { // 0x0000 - 0x9fff
       return self.ram_rom.ram[addr as usize];
@@ -85,7 +75,7 @@ impl MemMap {
     return self.ram_rom.ram[addr as usize];
   }
 
-  pub fn set_byte(&mut self, addr: u16, value: u8) {
+  fn set_byte(&mut self, addr: u16, value: u8) {
     let port = self.ram_rom.ram[1];
     if addr < 0xa000 { // 0x0000 - 0x9fff
       self.ram_rom.ram[addr as usize] = value;
@@ -153,6 +143,21 @@ impl MemMap {
       return;
     }
     self.ram_rom.ram[addr as usize] = value;
+  }
+}
+
+impl MemMap {
+  pub fn new() -> MemMap {
+    let mut map = MemMap {
+      ram_rom: RamRom::new(),
+      cia: CIA::new(),
+      sid: SID::new(),
+      vic: VIC::new(),
+    };
+    // Init directional and port bits
+    map.set_byte(0, 0x2f);
+    map.set_byte(1, 0x37);
+    return map;
   }
 
   pub fn set_basic_rom(&mut self, bytes: Vec<u8>, offset: usize) {
