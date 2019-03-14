@@ -814,7 +814,7 @@ impl CPU {
       },
 
       0x91 => { // STA (nn),Y
-        let addr = self.get_address_absolute(mem);
+        let addr = self.get_address_indirect_indexed(mem);
         self.sta(mem, addr);
         (2, 6)
       },
@@ -987,7 +987,7 @@ impl CPU {
 
       0xb1 => { // LDA (nn),Y
         let addr = self.get_address_indirect_indexed(mem);
-        self.ldx(mem, addr);
+        self.lda(mem, addr);
         (2, 5)
       },
 

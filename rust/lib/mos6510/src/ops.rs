@@ -269,7 +269,7 @@ impl CPU {
     self.test_flag_negative(value);
     self.test_flag_zero(value);
     let status = self.status;
-    if b > a {
+    if a >= b {
       self.status = status | flags::FLAG_CARRY;
     } else {
       self.status = status & !flags::FLAG_CARRY;
@@ -364,22 +364,22 @@ mod tests {
     cpu.compare(0xf, 0x4);
     assert!(cpu.status & (1 << 7) == 0); // negative
     assert!(cpu.status & (1 << 1) == 0); // zero
-    assert!(cpu.status & 1 == 0); // carry
+    assert!(cpu.status & 1 == 1); // carry
     cpu.status = 0;
     cpu.compare(0xf0, 0x2);
     assert!(cpu.status & (1 << 7) > 0); // negative
     assert!(cpu.status & (1 << 1) == 0); // zero
-    assert!(cpu.status & 1 == 0); // carry
+    assert!(cpu.status & 1 == 1); // carry
     cpu.status = 0;
     cpu.compare(0xf, 0x12);
     assert!(cpu.status & (1 << 7) > 0); // negative
     assert!(cpu.status & (1 << 1) == 0); // zero
-    assert!(cpu.status & 1 > 0); // carry
+    assert!(cpu.status & 1 == 0); // carry
     cpu.status = 0;
     cpu.compare(0x20, 0x20);
     assert!(cpu.status & (1 << 7) == 0); // negative
     assert!(cpu.status & (1 << 1) > 0); // zero
-    assert!(cpu.status & 1 == 0); // carry
+    assert!(cpu.status & 1 == 1); // carry
   }
 
   #[test]

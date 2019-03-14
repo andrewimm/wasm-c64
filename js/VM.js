@@ -120,6 +120,7 @@ class VM {
       X: this.mod.getRegister(this.c64, 1).toString(16),
       Y: this.mod.getRegister(this.c64, 2).toString(16),
       Status: this.mod.getRegister(this.c64, 3).toString(2),
+      SP: this.mod.getRegister(this.c64, 4).toString(16),
       PC: this.mod.getRegister(this.c64, 5).toString(16),
     });
   }
