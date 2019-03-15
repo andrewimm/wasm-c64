@@ -105,3 +105,21 @@ pub fn get_register(raw: *mut VM, register: u32) -> u16 {
     return value;
   }
 }
+
+#[no_mangle]
+pub fn keydown(raw: *mut VM, key: u8) {
+  unsafe {
+    let mut vm = Box::from_raw(raw);
+    vm.mem.cia.keydown(key);
+    mem::forget(vm);
+  }
+}
+
+#[no_mangle]
+pub fn keyup(raw: *mut VM, key: u8) {
+  unsafe {
+    let mut vm = Box::from_raw(raw);
+    vm.mem.cia.keyup(key);
+    mem::forget(vm);
+  }
+}

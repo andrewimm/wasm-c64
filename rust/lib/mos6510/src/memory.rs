@@ -1,19 +1,19 @@
 use cpu::CPU;
 
 pub trait Memory {
-  fn get_byte(&self, addr: u16) -> u8;
+  fn get_byte(&mut self, addr: u16) -> u8;
   fn set_byte(&mut self, addr: u16, value: u8);
 }
 
 #[inline]
-pub fn memory_get_short(mem: &Memory, addr: u16) -> u16 {
+pub fn memory_get_short(mem: &mut Memory, addr: u16) -> u16 {
   let low = mem.get_byte(addr) as u16;
   let high = mem.get_byte(addr + 1) as u16;
   (high << 8) | low
 }
 
 impl CPU {
-  pub fn reset(&mut self, mem: &Memory) {
+  pub fn reset(&mut self, mem: &mut Memory) {
     self.acc = 0;
     self.x = 0;
     self.y = 0;
@@ -29,7 +29,7 @@ impl CPU {
     self.stack = self.stack.wrapping_sub(1);
   }
 
-  pub fn pop(&mut self, mem: &Memory) -> u8 {
+  pub fn pop(&mut self, mem: &mut Memory) -> u8 {
     self.stack = self.stack.wrapping_add(1);
     let addr: u16 = 0x100 + (self.stack as u16);
     mem.get_byte(addr)
@@ -55,43 +55,43 @@ impl CPU {
   }
 
   #[inline]
-  pub fn get_address_zeropage(&self, mem: &Memory) -> u16 {
+  pub fn get_address_zeropage(&self, mem: &mut Memory) -> u16 {
     mem.get_byte(self.pc + 1) as u16
   }
 
   #[inline]
-  pub fn get_address_zeropage_x(&self, mem: &Memory) -> u16 {
+  pub fn get_address_zeropage_x(&self, mem: &mut Memory) -> u16 {
     (mem.get_byte(self.pc + 1) as u16).wrapping_add(self.x as u16)
   }
 
   #[inline]
-  pub fn get_address_zeropage_y(&self, mem: &Memory) -> u16 {
+  pub fn get_address_zeropage_y(&self, mem: &mut Memory) -> u16 {
     (mem.get_byte(self.pc + 1) as u16).wrapping_add(self.y as u16)
   }
 
   #[inline]
-  pub fn get_address_absolute(&self, mem: &Memory) -> u16 {
+  pub fn get_address_absolute(&self, mem: &mut Memory) -> u16 {
     let low = mem.get_byte(self.pc + 1) as u16;
     let high = mem.get_byte(self.pc + 2) as u16;
     low | (high << 8)
   }
 
   #[inline]
-  pub fn get_address_absolute_x(&self, mem: &Memory) -> u16 {
+  pub fn get_address_absolute_x(&self, mem: &mut Memory) -> u16 {
     let low = mem.get_byte(self.pc + 1) as u16;
     let high = mem.get_byte(self.pc + 2) as u16;
     (low | (high << 8)) + (self.x as u16)
   }
 
   #[inline]
-  pub fn get_address_absolute_y(&self, mem: &Memory) -> u16 {
+  pub fn get_address_absolute_y(&self, mem: &mut Memory) -> u16 {
     let low = mem.get_byte(self.pc + 1) as u16;
     let high = mem.get_byte(self.pc + 2) as u16;
     (low | (high << 8)) + (self.y as u16)
   }
 
   #[inline]
-  pub fn get_address_indirect(&self, mem: &Memory) -> u16 {
+  pub fn get_address_indirect(&self, mem: &mut Memory) -> u16 {
     let src_low = mem.get_byte(self.pc + 1) as u16;
     let src_high = mem.get_byte(self.pc + 2) as u16;
     let src = src_low | (src_high << 8);
@@ -101,7 +101,7 @@ impl CPU {
   }
 
   #[inline]
-  pub fn get_address_indexed_indirect(&self, mem: &Memory) -> u16 {
+  pub fn get_address_indexed_indirect(&self, mem: &mut Memory) -> u16 {
     let src = (mem.get_byte(self.pc + 1) as u16).wrapping_add(self.x as u16);
     let low = mem.get_byte(src) as u16;
     let high = mem.get_byte(src + 1) as u16;
@@ -109,7 +109,7 @@ impl CPU {
   }
 
   #[inline]
-  pub fn get_address_indirect_indexed(&self, mem: &Memory) -> u16 {
+  pub fn get_address_indirect_indexed(&self, mem: &mut Memory) -> u16 {
     let src = mem.get_byte(self.pc + 1) as u16;
     let low = mem.get_byte(src) as u16;
     let high = mem.get_byte(src + 1) as u16;
@@ -135,7 +135,7 @@ pub mod mock {
   }
 
   impl Memory for MockMem {
-    fn get_byte(&self, addr: u16) -> u8 {
+    fn get_byte(&mut self, addr: u16) -> u8 {
       return self.ram[(addr % 0x2000) as usize];
     }
 
@@ -157,7 +157,7 @@ pub mod mock {
   }
 
   impl Memory for MockBigMem {
-    fn get_byte(&self, addr: u16) -> u8 {
+    fn get_byte(&mut self, addr: u16) -> u8 {
       return self.ram[addr as usize];
     }
 
@@ -192,7 +192,7 @@ mod tests {
     mem.ram[100] = 0x41;
     mem.ram[101] = 0xc0;
     cpu.pc = 99;
-    assert!(cpu.get_address_absolute(&mem) == 0xc041);
+    assert!(cpu.get_address_absolute(&mut mem) == 0xc041);
   }
 
   #[test]
@@ -203,7 +203,7 @@ mod tests {
     mem.ram[101] = 0x08;
     cpu.pc = 99;
     cpu.x = 5;
-    assert!(cpu.get_address_absolute_x(&mem) == 0x8b5);
+    assert!(cpu.get_address_absolute_x(&mut mem) == 0x8b5);
   }
 
   #[test]
@@ -214,7 +214,7 @@ mod tests {
     mem.ram[101] = 0xaa;
     cpu.pc = 99;
     cpu.y = 2;
-    assert!(cpu.get_address_absolute_y(&mem) == 0xaabd);
+    assert!(cpu.get_address_absolute_y(&mut mem) == 0xaabd);
   }
 
   #[test]
@@ -226,7 +226,7 @@ mod tests {
     mem.ram[0x40] = 0xca;
     mem.ram[0x41] = 0xb0;
     cpu.pc = 0x1f;
-    assert!(cpu.get_address_indirect(&mem) == 0xb0ca);
+    assert!(cpu.get_address_indirect(&mut mem) == 0xb0ca);
   }
 
   #[test]
@@ -239,7 +239,7 @@ mod tests {
     mem.ram[0x06] = 0x5c;
     cpu.pc = 0x1f;
     cpu.x = 4;
-    assert!(cpu.get_address_indexed_indirect(&mem) == 0x5c11);
+    assert!(cpu.get_address_indexed_indirect(&mut mem) == 0x5c11);
   }
 
   #[test]
@@ -252,6 +252,6 @@ mod tests {
     mem.ram[0x34] = 0xab;
     cpu.pc = 0x1f;
     cpu.y = 0xd;
-    assert!(cpu.get_address_indirect_indexed(&mem) == 0xabcd);
+    assert!(cpu.get_address_indirect_indexed(&mut mem) == 0xabcd);
   }
 }

@@ -14,7 +14,7 @@ pub struct MemMap {
 }
 
 impl Memory for MemMap {
-  fn get_byte(&self, addr: u16) -> u8 {
+  fn get_byte(&mut self, addr: u16) -> u8 {
     let port = self.ram_rom.ram[1];
     if addr < 0xa000 { // 0x0000 - 0x9fff
       return self.ram_rom.ram[addr as usize];

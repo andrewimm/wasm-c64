@@ -3,7 +3,7 @@ use flags;
 use memory::Memory;
 
 impl CPU {
-  pub fn ora(&mut self, mem: &Memory, addr: u16) {
+  pub fn ora(&mut self, mem: &mut Memory, addr: u16) {
     let orig = self.acc;
     let value = mem.get_byte(addr);
     let result = orig | value;
@@ -34,10 +34,13 @@ impl CPU {
   pub fn and(&mut self, mem: &mut Memory, addr: u16) {
     let orig = self.acc;
     let value = mem.get_byte(addr);
-    self.acc = orig & value;
+    let result = orig & value;
+    self.acc = result;
+    self.test_flag_zero(result);
+    self.test_flag_negative(result);
   }
 
-  pub fn bit(&mut self, mem: &Memory, addr: u16) {
+  pub fn bit(&mut self, mem: &mut Memory, addr: u16) {
     let orig = self.acc;
     let value = mem.get_byte(addr);
     let mut status = self.status;
@@ -72,7 +75,7 @@ impl CPU {
     result
   }
 
-  pub fn plp(&mut self, mem: &Memory) {
+  pub fn plp(&mut self, mem: &mut Memory) {
     let status = self.pop(mem);
     self.status = status & 0b11001111;
   }
@@ -82,7 +85,7 @@ impl CPU {
     self.status = status | flags::FLAG_CARRY;
   }
 
-  pub fn rti(&mut self, mem: &Memory) {
+  pub fn rti(&mut self, mem: &mut Memory) {
     let status = self.pop(mem);
     let pc_low = self.pop(mem) as u16;
     let pc_high = self.pop(mem) as u16;
@@ -90,7 +93,7 @@ impl CPU {
     self.pc = (pc_high << 8) | pc_low;
   }
 
-  pub fn eor(&mut self, mem: &Memory, addr: u16) {
+  pub fn eor(&mut self, mem: &mut Memory, addr: u16) {
     let orig = self.acc;
     let value = mem.get_byte(addr);
     let result = orig ^ value;
@@ -118,7 +121,7 @@ impl CPU {
     self.status = status;
   }
 
-  pub fn rts(&mut self, mem: &Memory) {
+  pub fn rts(&mut self, mem: &mut Memory) {
     let low = self.pop(mem) as u16;
     let high = self.pop(mem) as u16;
     let ret = (high << 8) | low;
@@ -144,7 +147,7 @@ impl CPU {
     self.acc = total;
   }
   
-  pub fn sbc(&mut self, mem: &Memory, addr: u16) {
+  pub fn sbc(&mut self, mem: &mut Memory, addr: u16) {
     let value = !mem.get_byte(addr);
     self.adc(value);
   }
@@ -162,7 +165,7 @@ impl CPU {
     result
   }
 
-  pub fn pla(&mut self, mem: &Memory) {
+  pub fn pla(&mut self, mem: &mut Memory) {
     let acc = self.pop(mem);
     self.acc = acc;
     self.test_flag_negative(acc);
@@ -217,21 +220,21 @@ impl CPU {
     self.test_flag_zero(value);
   }
 
-  pub fn ldy(&mut self, mem: &Memory, addr: u16) {
+  pub fn ldy(&mut self, mem: &mut Memory, addr: u16) {
     let value = mem.get_byte(addr);
     self.y = value;
     self.test_flag_negative(value);
     self.test_flag_zero(value);
   }
 
-  pub fn lda(&mut self, mem: &Memory, addr: u16) {
+  pub fn lda(&mut self, mem: &mut Memory, addr: u16) {
     let value = mem.get_byte(addr);
     self.acc = value;
     self.test_flag_negative(value);
     self.test_flag_zero(value);
   }
 
-  pub fn ldx(&mut self, mem: &Memory, addr: u16) {
+  pub fn ldx(&mut self, mem: &mut Memory, addr: u16) {
     let value = mem.get_byte(addr);
     self.x = value;
     self.test_flag_negative(value);
@@ -276,19 +279,19 @@ impl CPU {
     }
   }
 
-  pub fn cpy(&mut self, mem: &Memory, addr: u16) {
+  pub fn cpy(&mut self, mem: &mut Memory, addr: u16) {
     let value = mem.get_byte(addr);
     let y = self.y;
     self.compare(y, value);
   }
 
-  pub fn cpx(&mut self, mem: &Memory, addr: u16) {
+  pub fn cpx(&mut self, mem: &mut Memory, addr: u16) {
     let value = mem.get_byte(addr);
     let x = self.x;
     self.compare(x, value);
   }
 
-  pub fn cmp(&mut self, mem: &Memory, addr: u16) {
+  pub fn cmp(&mut self, mem: &mut Memory, addr: u16) {
     let value = mem.get_byte(addr);
     let acc = self.acc;
     self.compare(acc, value);

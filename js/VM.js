@@ -21,6 +21,8 @@ function loadWASM(vm) {
   return fetchAndInstantiate(PATH, {
     env: {
       // methods exposed to wasm
+      console_log: msg => console.log(msg),
+      console_error: err => console.error(err),
     },
   }).then(instance => {
     return {
@@ -35,6 +37,8 @@ function loadWASM(vm) {
       runVMFor: instance.exports.run_vm,
       reset: instance.exports.reset,
       getRegister: instance.exports.get_register,
+      keydown: instance.exports.keydown,
+      keyup: instance.exports.keyup,
     };
   });
 }
@@ -48,6 +52,15 @@ function b64ToByteArray(str) {
   }
   return arr;
 }
+
+const KEYBOARD = {
+  a: 10,
+  b: 28,
+  c: 20,
+  d: 18,
+  e: 14,
+  f: 21,
+};
 
 class VM {
   constructor(gl) {
@@ -83,6 +96,29 @@ class VM {
     this._lastFrame = 0;
 
     this.frame = this.frame.bind(this);
+    this.keydown = this.keydown.bind(this);
+    this.keyup = this.keyup.bind(this);
+
+    window.addEventListener('keydown', e => {
+      this.keydown(e.key);
+    });
+    window.addEventListener('keyup', e => {
+      this.keyup(e.key);
+    });
+  }
+
+  keydown(key) {
+    if (key in KEYBOARD) {
+      const code = KEYBOARD[key];
+      this.mod.keydown(this.c64, code);
+    }
+  }
+
+  keyup(key) {
+    if (key in KEYBOARD) {
+      const code = KEYBOARD[key];
+      this.mod.keyup(this.c64, code);
+    }
   }
 
   step() {

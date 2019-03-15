@@ -28,12 +28,16 @@ pub fn run_ms(&mut self, ms: u32) {
   let mut ran = 0;
   while ran < cycles {
     let step_time = self.step();
+    if self.mem.cia.update_timers(step_time) {
+      // cia interrupt fired
+      self.cpu.interrupt_request(&mut self.mem);
+    }
     ran += step_time as u32;
   }
 }
 
 pub fn reset(&mut self) {
-  self.cpu.reset(&self.mem);
+  self.cpu.reset(&mut self.mem);
 }
 }
 
