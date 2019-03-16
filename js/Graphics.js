@@ -163,6 +163,9 @@ class Graphics {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     this.initColorTexture();
+
+    this._frameColor = 14;
+    this._bgColor = 6;
   }
 
   initColorTexture() {
@@ -202,6 +205,11 @@ class Graphics {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, 1024, 1, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, data);
   }
 
+  setColors(border, bg) {
+    this._frameColor = border;
+    this._bgColor = bg;
+  }
+
   draw() {
     gl.viewport(0, 0, 384, 272);
     gl.clearColor(0, 0, 0, 0);
@@ -215,8 +223,8 @@ class Graphics {
     gl.uniform1i(this.text.uniforms.colorMem, 6);
     gl.uniform2f(this.text.uniforms.offset, 0, 0);
 
-    gl.uniform1i(this.text.uniforms.frameColor, 14);
-    gl.uniform1i(this.text.uniforms.bgColor, 6);
+    gl.uniform1i(this.text.uniforms.frameColor, this._frameColor);
+    gl.uniform1i(this.text.uniforms.bgColor, this._bgColor);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 }

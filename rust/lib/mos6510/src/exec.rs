@@ -364,7 +364,7 @@ impl CPU {
 
       0x40 => { // RTI
         self.rti(mem);
-        (1, 6)
+        (0, 6)
       },
 
       0x41 => { // EOR (nn,X)

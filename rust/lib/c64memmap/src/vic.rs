@@ -65,8 +65,8 @@ pub struct VIC {
   screen_width: ScreenWidth,
   multicolor: bool,
 
-  border_color: u8,
-  background_color: u8,
+  pub border_color: u8,
+  pub background_color: u8,
   background_color_e1: u8,
   background_color_e2: u8,
   background_color_e3: u8,

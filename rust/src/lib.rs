@@ -123,3 +123,23 @@ pub fn keyup(raw: *mut VM, key: u8) {
     mem::forget(vm);
   }
 }
+
+#[no_mangle]
+pub fn get_border_color(raw: *mut VM, key: u8) -> u8 {
+  unsafe {
+    let vm = Box::from_raw(raw);
+    let value = vm.mem.vic.border_color;
+    mem::forget(vm);
+    value
+  }
+}
+
+#[no_mangle]
+pub fn get_bg_color(raw: *mut VM, key: u8) -> u8 {
+  unsafe {
+    let vm = Box::from_raw(raw);
+    let value = vm.mem.vic.background_color;
+    mem::forget(vm);
+    value
+  }
+}

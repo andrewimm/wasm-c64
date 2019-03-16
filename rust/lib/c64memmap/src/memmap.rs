@@ -55,7 +55,7 @@ impl Memory for MemMap {
           }
           if addr < 0xde00 {
             // CIA 2
-            return self.cia.get_byte(addr - 0xdd00);
+            return self.cia.get_byte(addr - 0xdc00);
           }
           if addr < 0xdf00 {
             // I/O 1
@@ -123,7 +123,7 @@ impl Memory for MemMap {
           }
           if addr < 0xde00 {
             // CIA 2
-            self.cia.set_byte(addr - 0xdd00, value);
+            self.cia.set_byte(addr - 0xdc00, value);
             return;
           }
           if addr < 0xdf00 {

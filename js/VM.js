@@ -22,6 +22,7 @@ function loadWASM(vm) {
     env: {
       // methods exposed to wasm
       console_log: msg => console.log(msg),
+      console_log_b: n => console.log(n.toString(2)),
       console_error: err => console.error(err),
     },
   }).then(instance => {
@@ -39,6 +40,8 @@ function loadWASM(vm) {
       getRegister: instance.exports.get_register,
       keydown: instance.exports.keydown,
       keyup: instance.exports.keyup,
+      getBorderColor: instance.exports.get_border_color,
+      getBgColor: instance.exports.get_bg_color,
     };
   });
 }
@@ -54,12 +57,60 @@ function b64ToByteArray(str) {
 }
 
 const KEYBOARD = {
-  a: 10,
-  b: 28,
-  c: 20,
-  d: 18,
-  e: 14,
-  f: 21,
+  Escape: 63,
+  Backquote: 57,
+  Digit1: 56,
+  Digit2: 59,
+  Digit3: 8,
+  Digit4: 11,
+  Digit5: 16,
+  Digit6: 19,
+  Digit7: 24,
+  Digit8: 27,
+  Digit9: 32,
+  Digit0: 35,
+  Minus: 40,
+  Equal: 53,
+  Backspace: 0,
+  Tab: 58,
+  KeyQ: 62,
+  KeyW: 9,
+  KeyE: 14,
+  KeyR: 17,
+  KeyT: 22,
+  KeyY: 25,
+  KeyU: 30,
+  KeyI: 33,
+  KeyO: 38,
+  KeyP: 41,
+  BracketLeft: 46,
+  BracketRight: 49,
+  Enter: 1,
+  CapsLock: 52,
+  KeyA: 10,
+  KeyS: 13,
+  KeyD: 18,
+  KeyF: 21,
+  KeyG: 26,
+  KeyH: 29,
+  KeyJ: 34,
+  KeyK: 37,
+  KeyL: 42,
+  Semicolon: 45,
+  Quote: 50,
+  ShiftLeft: 15,
+  KeyZ: 12,
+  KeyX: 23,
+  KeyC: 20,
+  KeyV: 31,
+  KeyB: 28,
+  KeyN: 39,
+  KeyM: 36,
+  Comma: 47,
+  Period: 44,
+  Slash: 55,
+  ControlLeft: 61,
+  Space: 60,
 };
 
 class VM {
@@ -100,10 +151,11 @@ class VM {
     this.keyup = this.keyup.bind(this);
 
     window.addEventListener('keydown', e => {
-      this.keydown(e.key);
+      this.keydown(e.code);
+      e.preventDefault();
     });
     window.addEventListener('keyup', e => {
-      this.keyup(e.key);
+      this.keyup(e.code);
     });
   }
 
@@ -129,7 +181,7 @@ class VM {
     if (this._lastFrame === 0) {
       this._lastFrame = ms;
     }
-    const delta = ms - this._lastFrame;
+    const delta = Math.min(ms - this._lastFrame, 100);
     this._lastFrame = ms;
 
     // collect input
@@ -141,6 +193,10 @@ class VM {
     this.graphics.loadCharMem(this.mem.char);
     this.graphics.loadScreenMem(this.mem.screen);
     this.graphics.loadColorMem(this.mem.color);
+    this.graphics.setColors(
+      this.mod.getBorderColor(this.c64),
+      this.mod.getBgColor(this.c64)
+    );
     this.graphics.draw();
 
     requestAnimationFrame(this.frame);
