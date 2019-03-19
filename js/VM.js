@@ -42,6 +42,7 @@ function loadWASM(vm) {
       keyup: instance.exports.keyup,
       getBorderColor: instance.exports.get_border_color,
       getBgColor: instance.exports.get_bg_color,
+      getGraphicsMode: instance.exports.get_graphics_mode,
     };
   });
 }
@@ -195,8 +196,11 @@ class VM {
     this.graphics.loadColorMem(this.mem.color);
     this.graphics.setColors(
       this.mod.getBorderColor(this.c64),
-      this.mod.getBgColor(this.c64)
+      this.mod.getBgColor(this.c64, 0),
+      this.mod.getBgColor(this.c64, 1),
+      this.mod.getBgColor(this.c64, 2),
     );
+    this.graphics.setMode(this.mod.getGraphicsMode(this.c64));
     this.graphics.draw();
 
     requestAnimationFrame(this.frame);

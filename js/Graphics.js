@@ -36,8 +36,11 @@ precision highp float;
 precision highp usampler2D;
 
 in vec2 v_texcoord;
+uniform int u_mode;
 uniform int u_framecolor;
 uniform int u_bgcolor;
+uniform int u_bgcolor_2;
+uniform int u_bgcolor_3;
 uniform float u_charmem_length;
 uniform usampler2D u_charmem;
 uniform usampler2D u_screenmem;
@@ -55,10 +58,20 @@ void main() {
   float offsety = (v_texcoord.y - (floor(v_texcoord.y / 8.0) * 8.0)) / 8.0;
   vec2 memcoord = vec2(offsety, (float(charindex) + 0.5) / u_charmem_length);
   uint line = texture(u_charmem, memcoord).r;
-  uint set = (line >> offsetx) & 1u;
-  if (set > 0u) {
-    float tileIndex = tile.y * 40. + tile.x;
-    index = int(texture(u_colormem, vec2(tileIndex / 1024., 0.5)).r);
+  float tileIndex = tile.y * 40. + tile.x;
+  if (u_mode == 0) {
+    if (((line >> offsetx) & 1u) > 0u) {
+      index = int(texture(u_colormem, vec2(tileIndex / 1024., 0.5)).r);
+    }
+  } else if (u_mode == 1) {
+    uint color = (line >> ((offsetx / 2) * 2)) & 3u;
+    if (color == 1u) {
+      index = u_bgcolor_2;
+    } else if (color == 2u) {
+      index = u_bgcolor_3;
+    } else if (color == 3u) {
+      index = int(texture(u_colormem, vec2(tileIndex / 1024., 0.5)).r);
+    }
   }
   if (v_texcoord.x < 0. || v_texcoord.y < 0. || v_texcoord.x > 320. || v_texcoord.y > 200.) {
     index = u_framecolor;
@@ -119,6 +132,9 @@ class Graphics {
         colorMem: gl.getUniformLocation(textProgram, 'u_colormem'),
         frameColor: gl.getUniformLocation(textProgram, 'u_framecolor'),
         bgColor: gl.getUniformLocation(textProgram, 'u_bgcolor'),
+        bgColor2: gl.getUniformLocation(textProgram, 'u_bgcolor_2'),
+        bgColor3: gl.getUniformLocation(textProgram, 'u_bgcolor_3'),
+        mode: gl.getUniformLocation(textProgram, 'u_mode'),
       },
     };
 
@@ -166,6 +182,9 @@ class Graphics {
 
     this._frameColor = 14;
     this._bgColor = 6;
+    this._bgColor2 = 0;
+    this._bgColor3 = 0;
+    this._mode = 0;
   }
 
   initColorTexture() {
@@ -205,9 +224,15 @@ class Graphics {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, 1024, 1, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, data);
   }
 
-  setColors(border, bg) {
+  setColors(border, bg, bg2, bg3) {
     this._frameColor = border;
     this._bgColor = bg;
+    this._bgColor2 = bg2;
+    this._bgColor3 = bg3;
+  }
+
+  setMode(mode) {
+    this._mode = mode;
   }
 
   draw() {
@@ -225,6 +250,10 @@ class Graphics {
 
     gl.uniform1i(this.text.uniforms.frameColor, this._frameColor);
     gl.uniform1i(this.text.uniforms.bgColor, this._bgColor);
+    gl.uniform1i(this.text.uniforms.bgColor2, this._bgColor2);
+    gl.uniform1i(this.text.uniforms.bgColor3, this._bgColor3);
+
+    gl.uniform1i(this.text.uniforms.mode, this._mode);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 }

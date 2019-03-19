@@ -1,3 +1,5 @@
+use std::cmp;
+
 pub struct Sprite {
   pub x: u16,
   pub y: u8,
@@ -52,26 +54,35 @@ pub enum Mode {
   Bitmap,
 }
 
+pub enum DerivedGraphicsMode {
+  StandardCharMode = 0,
+  MulticolorCharMode = 1,
+  StandardBitmapMode = 2,
+  MulticolorBitmapMode = 3,
+  ExtendedBackgroundColorMode = 4,
+  Invalid = 5,
+}
+
 pub struct VIC {
   pub sprites: [Sprite;8],
-  vertical_scroll: u8,
+  pub vertical_scroll: u8,
   screen_height: ScreenHeight,
   mode: Mode,
-  screen_on: bool,
+  pub screen_on: bool,
   extended_bg: bool,
   raster_interrupt_line: u16,
   current_raster_line: u16,
-  horizontal_scroll: u8,
+  pub horizontal_scroll: u8,
   screen_width: ScreenWidth,
   multicolor: bool,
 
   pub border_color: u8,
   pub background_color: u8,
-  background_color_e1: u8,
-  background_color_e2: u8,
-  background_color_e3: u8,
-  sprite_color_e1: u8,
-  sprite_color_e2: u8,
+  pub background_color_e1: u8,
+  pub background_color_e2: u8,
+  pub background_color_e3: u8,
+  pub sprite_color_e1: u8,
+  pub sprite_color_e2: u8,
 }
 
 impl VIC {
@@ -327,9 +338,9 @@ impl VIC {
       },
       0x11 => {
         self.vertical_scroll = value & 0x7;
-        self.screen_height = if (value & 0x8 == 0) { ScreenHeight::TwentyFour } else { ScreenHeight::TwentyFive };
+        self.screen_height = if value & 0x8 == 0 { ScreenHeight::TwentyFour } else { ScreenHeight::TwentyFive };
         self.screen_on = value & 0x10 == 0x10;
-        self.mode = if (value & 0x20 == 0) { Mode::Text } else { Mode::Bitmap };
+        self.mode = if value & 0x20 == 0 { Mode::Text } else { Mode::Bitmap };
         self.extended_bg = value & 0x40 == 0x40;
         let raster_high = ((value as u16) & 0x80) << 1;
         let line = self.raster_interrupt_line & 0xf | raster_high;
@@ -414,6 +425,24 @@ impl VIC {
       0x2e => self.sprites[7].color = value & 0xf,
       _ => (),
     };
+  }
+
+  pub fn get_graphics_mode_bits(&self) -> u8 {
+    let mcm = if self.multicolor { 1 } else { 0 };
+    let bmm = if self.mode == Mode::Bitmap { 2 } else { 0 };
+    let ecm = if self.extended_bg { 4 } else { 0 };
+    mcm | bmm | ecm
+  }
+
+  pub fn get_graphics_mode(&self) -> DerivedGraphicsMode {
+    match self.get_graphics_mode_bits() {
+      0 => DerivedGraphicsMode::StandardCharMode,
+      1 => DerivedGraphicsMode::MulticolorCharMode,
+      2 => DerivedGraphicsMode::StandardBitmapMode,
+      3 => DerivedGraphicsMode::MulticolorBitmapMode,
+      4 => DerivedGraphicsMode::ExtendedBackgroundColorMode,
+      _ => DerivedGraphicsMode::Invalid,
+    }
   }
 }
 

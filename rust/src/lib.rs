@@ -125,7 +125,7 @@ pub fn keyup(raw: *mut VM, key: u8) {
 }
 
 #[no_mangle]
-pub fn get_border_color(raw: *mut VM, key: u8) -> u8 {
+pub fn get_border_color(raw: *mut VM) -> u8 {
   unsafe {
     let vm = Box::from_raw(raw);
     let value = vm.mem.vic.border_color;
@@ -135,10 +135,25 @@ pub fn get_border_color(raw: *mut VM, key: u8) -> u8 {
 }
 
 #[no_mangle]
-pub fn get_bg_color(raw: *mut VM, key: u8) -> u8 {
+pub fn get_bg_color(raw: *mut VM, index: u8) -> u8 {
   unsafe {
     let vm = Box::from_raw(raw);
-    let value = vm.mem.vic.background_color;
+    let value = match index {
+      1 => vm.mem.vic.background_color_e1,
+      2 => vm.mem.vic.background_color_e2,
+      3 => vm.mem.vic.background_color_e3,
+      _ => vm.mem.vic.background_color,
+    };
+    mem::forget(vm);
+    value
+  }
+}
+
+#[no_mangle]
+pub fn get_graphics_mode(raw: *mut VM) -> u8 {
+  unsafe {
+    let vm = Box::from_raw(raw);
+    let value = vm.mem.vic.get_graphics_mode_bits();
     mem::forget(vm);
     value
   }
