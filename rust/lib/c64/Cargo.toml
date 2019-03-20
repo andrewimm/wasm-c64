@@ -9,5 +9,5 @@ path = "src/lib.rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-c64memmap = {path = "lib/c64memmap"}
-mos6510 = {path = "lib/mos6510"}
+c64memmap = {path = "../c64memmap"}
+mos6510 = {path = "../mos6510"}
