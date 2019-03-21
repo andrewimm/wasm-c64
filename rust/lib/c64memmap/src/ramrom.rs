@@ -43,4 +43,27 @@ impl RamRom {
     let ptr = &mut self.ram[0] as *mut u8;
     return ptr;
   }
+
+  pub fn screen_ptr(&mut self) -> *mut u8 {
+    let ptr = &mut self.ram[0x400] as *mut u8;
+    return ptr;
+  }
+
+  pub fn initialize_kernal_rom(&mut self, rom: &'static [u8;0x2000]) {
+    for i in 0..0x2000 {
+      self.kernal[i] = rom[i];
+    }
+  }
+
+  pub fn initialize_basic_rom(&mut self, rom: &'static [u8;0x2000]) {
+    for i in 0..0x2000 {
+      self.basic[i] = rom[i];
+    }
+  }
+
+  pub fn initialize_char_rom(&mut self, rom: &'static [u8;0x1000]) {
+    for i in 0..0x1000 {
+      self.char_gen[i] = rom[i];
+    }
+  }
 }
