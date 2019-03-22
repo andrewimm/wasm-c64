@@ -8,7 +8,8 @@ use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
-use std::time::{SystemTime};
+use std::thread;
+use std::time::{self, SystemTime};
 
 mod vm;
 use vm::VM;
@@ -156,11 +157,18 @@ fn main() {
   let mut last_frame_time = SystemTime::now();
   loop {
     let now = SystemTime::now();
-    let delta = match now.duration_since(last_frame_time) {
+    let mut delta = match now.duration_since(last_frame_time) {
       Ok(n) => n.as_millis(),
       Err(_) => 1,
     };
     last_frame_time = now;
+
+    if delta < 16 {
+      let diff = 16 - delta;
+      let sleeptime = time::Duration::from_millis(diff as u64);
+      thread::sleep(sleeptime);
+      delta += diff;
+    }
 
     let fps = 1000 / cmp::max(delta, 1);
     let last_frames_pointer = shell.last_frames_pointer;
@@ -245,6 +253,10 @@ fn create_shader(shader_type: u32, source: &str) -> u32 {
     let mut success = gl::FALSE as GLint;
     gl::GetShaderiv(shader, gl::COMPILE_STATUS, &mut success);
     if success != gl::TRUE as GLint {
+      let mut bytes: [i8; 512] = [0;512];
+      gl::GetShaderInfoLog(shader, 512, ptr::null_mut(), &mut bytes[0] as *mut i8);
+      let u8bytes = unsafe { &*(&bytes[..] as *const [i8] as *const [u8]) };
+      println!("Shader Error: {}", std::str::from_utf8(u8bytes).unwrap());
       gl::DeleteShader(shader);
       panic!("Failed to compile shader");
     }
