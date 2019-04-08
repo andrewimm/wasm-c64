@@ -3,10 +3,47 @@ use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use std::thread;
+use std::time::{self, SystemTime};
 
+use emushell::EmuShell;
 use nesmemmap::mapper;
 
 fn main() {
+  let mapper = load_mapper();
+
+  let mut shell = EmuShell::new();
+
+  let mut last_frame_time = SystemTime::now();
+  loop {
+    let now = SystemTime::now();
+    let mut delta = match now.duration_since(last_frame_time) {
+      Ok(n) => n.as_millis(),
+      Err(_) => 1,
+    };
+    last_frame_time = now;
+
+    if delta < 16 {
+      let diff = 16 - delta;
+      let sleeptime = time::Duration::from_millis(diff as u64);
+      thread::sleep(sleeptime);
+      delta += diff;
+    }
+
+    shell.update();
+    if shell.should_exit() {
+      break;
+    }
+
+    if shell.in_foreground() {
+      // Run VM, draw result
+    }
+
+    shell.swap_buffers();
+  }
+}
+
+fn load_mapper() -> Box<impl mapper::Mapper> {
   let mut bin_seen = false;
   let mut file_seen = false;
   let mut file_name = String::new();
@@ -33,5 +70,8 @@ fn main() {
     Ok(_) => (),
   };
 
-  let mmc = mapper::create_mapper(&buffer);
+  match mapper::create_mapper(&buffer) {
+    Err(msg) => panic!("Failed to initialize Mapper: {}", msg),
+    Ok(mapbox) => mapbox,
+  }
 }

@@ -1,7 +1,7 @@
 mod mapper;
 mod mmc1;
 
-use self::mapper::Mapper;
+pub use self::mapper::Mapper;
 
 // Create a Mapper instance from an iNes ROM
 pub fn create_mapper(rom: &Vec<u8>) -> Result<Box<impl mapper::Mapper>, &'static str> {
