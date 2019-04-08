@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 glutin = "0.20.0"
 gl = "0.11.0"
+gl-lite = "0.1.2"
 emu-shell = {path = "../../lib/emu-shell"}
 nes-memmap = {path = "../../lib/nes-memmap"}
 mos6510 = {path = "../../lib/mos6510"}
