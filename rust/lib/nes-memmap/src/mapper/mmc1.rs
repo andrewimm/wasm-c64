@@ -18,24 +18,7 @@ pub struct MMC1 {
 impl MMC1 {
   pub fn new(config: Config) -> MMC1 {
     let chr = if config.chr_rom_size == 0 {
-      let mut b = box [0; 0x2000];
-      b[0] = 0;
-      b[1] = 0xe0;
-      b[2] = 0xfc;
-      b[3] = 0x20;
-      b[4] = 0x20;
-      b[5] = 0x10;
-      b[6] = 0x3c;
-      b[7] = 0;
-      b[8] = 0;
-      b[9] = 0xe0;
-      b[10] = 0xfc;
-      b[11] = 0xd0;
-      b[12] = 0xdc;
-      b[13] = 0xee;
-      b[14] = 0xc0;
-      b[15] = 0xf8;
-      ChrMem::Ram(b)
+      ChrMem::Ram(box [0; 0x2000])
     } else {
       let size = (config.chr_rom_size as usize) * 16 * 1024;
       let mem = Vec::with_capacity(size);

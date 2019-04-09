@@ -2,6 +2,7 @@
 
 use gllite;
 use gllite::gli;
+use gllite::uniforms::UniformValue;
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -13,6 +14,7 @@ use std::time::{self, SystemTime};
 
 use nesmemmap::mapper;
 use mos6510::memory::Memory;
+mod palette;
 mod vm;
 use vm::VM;
 
@@ -50,30 +52,24 @@ fn main() {
   let mut pattern_1 = gllite::texture::Texture::new();
   pattern_1.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
   pattern_1.set_filter_mode(gli::NEAREST, gli::NEAREST);
-  let mut pattern_0_mem: Box<[u8; 0x1000]> = box [0; 0x1000];
-  for i in 0..0x1000 {
-    pattern_0_mem[i] = 0;
-  }
-  pattern_0_mem[0] = 0;
-  pattern_0_mem[1] = 0xe0;
-  pattern_0_mem[2] = 0xfc;
-  pattern_0_mem[3] = 0x20;
-  pattern_0_mem[4] = 0x20;
-  pattern_0_mem[5] = 0x10;
-  pattern_0_mem[6] = 0x3c;
-  pattern_0_mem[7] = 0;
-  pattern_0_mem[8] = 0;
-  pattern_0_mem[9] = 0xe0;
-  pattern_0_mem[10] = 0xfc;
-  pattern_0_mem[11] = 0xd0;
-  pattern_0_mem[12] = 0xdc;
-  pattern_0_mem[13] = 0xee;
-  pattern_0_mem[14] = 0xc0;
-  pattern_0_mem[15] = 0xf8;
-  pattern_0.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, &pattern_0_mem[0] as *const u8);
 
-  screen.set_uniform(String::from("pattern_0"), pattern_0.as_uniform_value());
-  screen.set_uniform(String::from("pattern_1"), pattern_1.as_uniform_value());
+  let mut nametable = gllite::texture::Texture::new();
+  nametable.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  nametable.set_filter_mode(gli::NEAREST, gli::NEAREST);
+
+  let mut attributes = gllite::texture::Texture::new();
+  attributes.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  attributes.set_filter_mode(gli::NEAREST, gli::NEAREST);
+
+  let mut colors = gllite::texture::Texture::new();
+  colors.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  colors.set_filter_mode(gli::NEAREST, gli::NEAREST);
+  colors.set_from_bytes(gli::RGBA, 64, 1, gli::RGBA, &palette::COLORS[0] as *const u8);
+
+  screen.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
+  screen.set_uniform(String::from("nametable"), nametable.as_uniform_value());
+  screen.set_uniform(String::from("colors"), colors.as_uniform_value());
+  screen.set_uniform(String::from("attributes"), attributes.as_uniform_value());
 
   let mut vm = VM::new(mapper);
   vm.mem.ppu.set_scanline(241);
@@ -111,8 +107,24 @@ fn main() {
         total += cycles as u32;
       }
 
+      let pattern_source = match vm.mem.ppu.background_address {
+        nesmemmap::ppu::BackgroundTableAddress::Base => pattern_0.as_uniform_value(),
+        nesmemmap::ppu::BackgroundTableAddress::Offset => pattern_1.as_uniform_value(),
+      };
+      screen.set_uniform(String::from("pattern"), pattern_source);
+      screen.set_uniform(String::from("bgcolor"), UniformValue::Int(vm.mem.ppu.bg_color as i32));
+      let bg_palette_0 = vm.mem.ppu.bg_palette_0;
+      screen.set_uniform(String::from("bg_palette_0"), UniformValue::IntVec3(bg_palette_0.0 as i32, bg_palette_0.1 as i32, bg_palette_0.2 as i32));
+      let bg_palette_1 = vm.mem.ppu.bg_palette_1;
+      screen.set_uniform(String::from("bg_palette_1"), UniformValue::IntVec3(bg_palette_1.0 as i32, bg_palette_1.1 as i32, bg_palette_1.2 as i32));
+      let bg_palette_2 = vm.mem.ppu.bg_palette_2;
+      screen.set_uniform(String::from("bg_palette_2"), UniformValue::IntVec3(bg_palette_2.0 as i32, bg_palette_2.1 as i32, bg_palette_2.2 as i32));
+      let bg_palette_3 = vm.mem.ppu.bg_palette_3;
+      screen.set_uniform(String::from("bg_palette_3"), UniformValue::IntVec3(bg_palette_3.0 as i32, bg_palette_3.1 as i32, bg_palette_3.2 as i32));
       pattern_0.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, vm.mem.get_pattern_0_ptr());
       pattern_1.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, vm.mem.get_pattern_1_ptr());
+      nametable.set_from_bytes(gli::R8UI, 32, 30, gli::RED_INTEGER, vm.mem.ppu.get_nametable_ptr());
+      attributes.set_from_bytes(gli::R8UI, 8, 8, gli::RED_INTEGER, vm.mem.ppu.get_attribute_ptr());
 
       unsafe {
         gl::Clear(gl::COLOR_BUFFER_BIT);

@@ -2,5 +2,5 @@
 
 pub mod mapper;
 pub mod memmap;
-mod ppu;
+pub mod ppu;
 mod ram;

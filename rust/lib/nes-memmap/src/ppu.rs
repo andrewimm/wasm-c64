@@ -24,16 +24,18 @@ enum SpriteTableAddress {
 
 // Address of pattersn for background
 #[derive(PartialEq)]
-enum BackgroundTableAddress {
+pub enum BackgroundTableAddress {
   Base, // 0x0000
   Offset, // 0x1000
 }
+
+type Palette = (u8, u8, u8);
 
 pub struct PPU {
   nametable_address: NametableAddress,
   vram_increment: VRAMIncrement,
   square_sprite_address: SpriteTableAddress,
-  background_address: BackgroundTableAddress,
+  pub background_address: BackgroundTableAddress,
   double_width_sprites: bool,
   nmi_enabled: bool,
 
@@ -67,6 +69,12 @@ pub struct PPU {
   
   oam: [u8;0x100],
   ciram: [u8;0x800],
+
+  pub bg_color: u8,
+  pub bg_palette_0: Palette,
+  pub bg_palette_1: Palette,
+  pub bg_palette_2: Palette,
+  pub bg_palette_3: Palette,
 }
 
 impl PPU {
@@ -109,6 +117,12 @@ impl PPU {
       
       oam: [0;0x100],
       ciram: [0;0x800],
+
+      bg_color: 0,
+      bg_palette_0: (0, 0, 0),
+      bg_palette_1: (0, 0, 0),
+      bg_palette_2: (0, 0, 0),
+      bg_palette_3: (0, 0, 0),
     }
   }
 
@@ -215,10 +229,36 @@ impl PPU {
         if self.ppu_address < 0x2000 {
           // pattern table
           mapper.ppu_set_byte(self.ppu_address, value);
-        } else if self.ppu_address < 0x3000 {
+        } else if self.ppu_address < 0x3eff {
           // nametables
-          let dest = mapper.ppu_get_mirrored_address(self.ppu_address);
+          let mut orig = self.ppu_address;
+          if orig >= 0x3000 {
+            orig -= 0x1000;
+          }
+          let dest = mapper.ppu_get_mirrored_address(orig);
           self.ciram[(dest - 0x2000) as usize] = value;
+        } else if self.ppu_address < 0x3fff {
+          let dest = self.ppu_address & 0x1f;
+          match dest {
+            0x0 => self.bg_color = value,
+            0x1 => self.bg_palette_0.0 = value,
+            0x2 => self.bg_palette_0.1 = value,
+            0x3 => self.bg_palette_0.2 = value,
+            0x4 => (),
+            0x5 => self.bg_palette_1.0 = value,
+            0x6 => self.bg_palette_1.1 = value,
+            0x7 => self.bg_palette_1.2 = value,
+            0x8 => (),
+            0x9 => self.bg_palette_2.0 = value,
+            0xa => self.bg_palette_2.1 = value,
+            0xb => self.bg_palette_2.2 = value,
+            0xc => (),
+            0xd => self.bg_palette_3.0 = value,
+            0xe => self.bg_palette_3.1 = value,
+            0xf => self.bg_palette_3.2 = value,
+            0x10 => self.bg_color = value,
+            _ => (),
+          };
         }
         let increment = if self.vram_increment == VRAMIncrement::Across { 1 } else { 32 };
         self.ppu_address = self.ppu_address.wrapping_add(increment);
@@ -269,5 +309,13 @@ impl PPU {
       },
       _ => 0,
     }
+  }
+
+  pub fn get_nametable_ptr(&self) -> *const u8 {
+    &self.ciram[0] as *const u8
+  }
+
+  pub fn get_attribute_ptr(&self) -> *const u8 {
+    &self.ciram[960] as *const u8
   }
 }
