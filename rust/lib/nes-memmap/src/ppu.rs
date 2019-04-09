@@ -1,4 +1,5 @@
 use crate::mapper::Mapper;
+use crate::sprite::Sprite;
 
 // Address of the base nametable
 enum NametableAddress {
@@ -51,9 +52,6 @@ pub struct PPU {
   pub oamaddr: u8,
   oamdata: u8,
 
-  ppuaddr: u8,
-  ppudata: u8,
-
   latch: u8,
   scroll_x: u8,
   scroll_y: u8,
@@ -67,7 +65,7 @@ pub struct PPU {
   ppu_address: u16,
   write_ppu_address_high: bool,
   
-  oam: [u8;0x100],
+  sprites: Vec<Sprite>,
   ciram: [u8;0x800],
 
   pub bg_color: u8,
@@ -79,6 +77,10 @@ pub struct PPU {
 
 impl PPU {
   pub fn new() -> PPU {
+    let mut sprites = Vec::with_capacity(64);
+    for i in 0..64 {
+      sprites.push(Sprite::new());
+    }
     PPU {
       nametable_address: NametableAddress::Table0,
       vram_increment: VRAMIncrement::Across,
@@ -99,9 +101,6 @@ impl PPU {
       oamaddr: 0,
       oamdata: 0,
 
-      ppuaddr: 0,
-      ppudata: 0,
-
       latch: 0,
       scroll_x: 0,
       scroll_y: 0,
@@ -115,7 +114,7 @@ impl PPU {
       ppu_address: 0,
       write_ppu_address_high: true,
       
-      oam: [0;0x100],
+      sprites: sprites,
       ciram: [0;0x800],
 
       bg_color: 0,
@@ -200,7 +199,8 @@ impl PPU {
         self.latch = value;
       },
       4 => { // set OAM Data
-        self.oam[self.oamaddr as usize] = value;
+        let index = (self.oamaddr >> 2) as usize;
+        self.sprites[index].set_oam_byte(self.oamaddr & 3, value);
         self.oamaddr.wrapping_add(1);
 
         self.latch = value;
@@ -287,7 +287,8 @@ impl PPU {
         self.latch
       },
       4 => { // OAM Data
-        self.oam[self.oamaddr as usize]
+        let index = (self.oamaddr >> 2) as usize;
+        self.sprites[index].get_oam_byte(self.oamaddr & 3)
       },
       5 => { // PPU Scroll position
         self.latch
@@ -309,6 +310,10 @@ impl PPU {
       },
       _ => 0,
     }
+  }
+
+  pub fn get_sprite(&self, index: usize) -> &Sprite {
+    self.sprites.get(index).unwrap()
   }
 
   pub fn get_nametable_ptr(&self) -> *const u8 {

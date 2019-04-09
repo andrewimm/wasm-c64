@@ -15,6 +15,7 @@ use std::time::{self, SystemTime};
 use nesmemmap::mapper;
 use mos6510::memory::Memory;
 mod palette;
+mod sprites;
 mod vm;
 use vm::VM;
 
@@ -71,6 +72,9 @@ fn main() {
   screen.set_uniform(String::from("colors"), colors.as_uniform_value());
   screen.set_uniform(String::from("attributes"), attributes.as_uniform_value());
 
+  let sprite_program = Rc::new(sprites::build_sprite_program());
+  let mut sprite_meshes = sprites::create_sprite_meshes(&sprite_program);
+
   let mut vm = VM::new(mapper);
   vm.mem.ppu.set_scanline(241);
 
@@ -126,10 +130,22 @@ fn main() {
       nametable.set_from_bytes(gli::R8UI, 32, 30, gli::RED_INTEGER, vm.mem.ppu.get_nametable_ptr());
       attributes.set_from_bytes(gli::R8UI, 8, 8, gli::RED_INTEGER, vm.mem.ppu.get_attribute_ptr());
 
+      let mut i = 0;
+      for mesh in sprite_meshes.iter_mut() {
+        let sprite = vm.mem.ppu.get_sprite(i);
+        sprites::update_sprite_mesh(mesh, sprite);
+        i += 1;
+      }
+
       unsafe {
         gl::Clear(gl::COLOR_BUFFER_BIT);
       }
+      bg.make_current();
       screen.draw();
+      sprite_program.make_current();
+      for sprite in sprite_meshes.iter_mut() {
+        sprite.draw();
+      }
     }
 
     shell.swap_buffers();

@@ -3,4 +3,5 @@
 pub mod mapper;
 pub mod memmap;
 pub mod ppu;
-mod ram;
+pub mod ram;
+pub mod sprite;
