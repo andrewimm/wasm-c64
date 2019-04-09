@@ -1,4 +1,4 @@
-use super::mapper::{ChrMem, Config, Mapper};
+use crate::mapper::mapper::{ChrMem, Config, Mapper};
 
 pub struct MMC1 {
   shifter: u8,
@@ -18,7 +18,24 @@ pub struct MMC1 {
 impl MMC1 {
   pub fn new(config: Config) -> MMC1 {
     let chr = if config.chr_rom_size == 0 {
-      ChrMem::Ram(box [0; 0x2000])
+      let mut b = box [0; 0x2000];
+      b[0] = 0;
+      b[1] = 0xe0;
+      b[2] = 0xfc;
+      b[3] = 0x20;
+      b[4] = 0x20;
+      b[5] = 0x10;
+      b[6] = 0x3c;
+      b[7] = 0;
+      b[8] = 0;
+      b[9] = 0xe0;
+      b[10] = 0xfc;
+      b[11] = 0xd0;
+      b[12] = 0xdc;
+      b[13] = 0xee;
+      b[14] = 0xc0;
+      b[15] = 0xf8;
+      ChrMem::Ram(b)
     } else {
       let size = (config.chr_rom_size as usize) * 16 * 1024;
       let mem = Vec::with_capacity(size);
@@ -26,7 +43,7 @@ impl MMC1 {
     };
     MMC1 {
       shifter: 0x10,
-      register_control: 0,
+      register_control: 0xc,
       register_chr0: 0,
       register_chr1: 0,
       register_prg: 0,
@@ -49,13 +66,15 @@ impl Mapper for MMC1 {
     if addr < 0x8000 {
       // write to ram, if enabled
       let prg = self.register_prg;
+      /*
       if prg & 0x10 != 0 {
         // PRG ram disabled
         return;
       }
-      let bank = prg & 0xf;
+      */
+      //let bank = prg & 0xf;
 
-
+      self.prg_ram[(addr - 0x6000) as usize] = value;
       return;
     }
     // Addresses 0x8000-0xffff are connected to a shift register
@@ -74,15 +93,19 @@ impl Mapper for MMC1 {
     if should_write { // Shifter is full, write it and reset
       match addr {
         0x8000...0x9fff => {
+          //println!("WRITE CTRL {:x}", self.shifter & 0x1f);
           self.register_control = self.shifter & 0x1f;
         },
         0xa000...0xbfff => {
+          //println!("WRITE CH0 {:x}", self.shifter & 0x1f);
           self.register_chr0 = self.shifter & 0x1f;
         },
         0xc000...0xdfff => {
+          //println!("WRITE CH1 {:x}", self.shifter & 0x1f);
           self.register_chr1 = self.shifter & 0x1f;
         },
         0xe000...0xffff => {
+          //println!("WRITE PRG {:x}", self.shifter & 0x1f);
           self.register_prg = self.shifter & 0x1f;
         },
         _ => (),
@@ -117,7 +140,7 @@ impl Mapper for MMC1 {
         // first bank fixed at 0x0000
         return self.prg_rom[offset as usize];
       }
-      if mode == 0x9 {
+      if mode == 0xc {
         // switch mode
         let bank = self.register_prg as u32 & 0xf;
         return self.prg_rom[(offset + bank * 0x4000) as usize];
@@ -136,7 +159,7 @@ impl Mapper for MMC1 {
       let bank = self.register_prg as u32 & 0xf;
       return self.prg_rom[(offset + bank * 0x4000) as usize];
     }
-    if mode == 0x9 {
+    if mode == 0xc {
       // last bank fixed at 0xc000
       let bank = self.config.prg_rom_size as u32 - 1;
       return self.prg_rom[(offset + bank * 0x4000) as usize];
@@ -177,6 +200,15 @@ impl Mapper for MMC1 {
     }
   }
 
+  fn ppu_set_byte(&mut self, addr: u16, value: u8) {
+    if addr >= 0x2000 {
+      return;
+    }
+    if let ChrMem::Ram(mem) = &mut self.chr_mem {
+      mem[addr as usize] = value;
+    }
+  }
+
   fn ppu_get_mirrored_address(&self, addr: u16) -> u16 {
     let mode = self.register_control & 3;
     match mode {
@@ -198,7 +230,8 @@ impl Mapper for MMC1 {
       3 => {
         // horizontal
         let offset = addr - 0x2000;
-        0x2000 + (offset & 0xbff)
+        let page = (addr & 0x800) >> 1;
+        0x2000 + (page | (offset & 0x3ff))
       }
       _ => addr,
     }
@@ -211,18 +244,32 @@ impl Mapper for MMC1 {
   }
 
   fn set_chr_rom(&mut self, rom: &[u8]) {
-    if let ChrMem::Ram(mem) = &mut self.chr_mem {
+    if let ChrMem::Rom(mem) = &mut self.chr_mem {
       for i in 0..rom.len() {
         mem[i] = rom[i];
       }
+    }
+  }
+
+  fn get_pattern_0_ptr(&self) -> *const u8 {
+    match &self.chr_mem {
+      ChrMem::Ram(mem) => &mem[0] as *const u8,
+      ChrMem::Rom(mem) => &mem[0] as *const u8,
+    }
+  }
+
+  fn get_pattern_1_ptr(&self) -> *const u8 {
+    match &self.chr_mem {
+      ChrMem::Ram(mem) => &mem[0x1000] as *const u8,
+      ChrMem::Rom(mem) => &mem[0x1000] as *const u8,
     }
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use mapper::mapper::{Config, Mirroring, Mapper};
-  use mapper::mmc1::MMC1;
+  use crate::mapper::mapper::{Config, Mirroring, Mapper};
+  use crate::mapper::mmc1::MMC1;
 
   fn create_mmc() -> MMC1 {
     MMC1::new(Config{
@@ -331,10 +378,10 @@ mod tests {
     assert_eq!(mmc.ppu_get_mirrored_address(0x24ff), 0x20ff);
     assert_eq!(mmc.ppu_get_mirrored_address(0x27ff), 0x23ff);
 
-    assert_eq!(mmc.ppu_get_mirrored_address(0x2800), 0x2800);
-    assert_eq!(mmc.ppu_get_mirrored_address(0x28fc), 0x28fc);
-    assert_eq!(mmc.ppu_get_mirrored_address(0x2aaa), 0x2aaa);
-    assert_eq!(mmc.ppu_get_mirrored_address(0x2c00), 0x2800);
-    assert_eq!(mmc.ppu_get_mirrored_address(0x2e20), 0x2a20);
+    assert_eq!(mmc.ppu_get_mirrored_address(0x2800), 0x2400);
+    assert_eq!(mmc.ppu_get_mirrored_address(0x28fc), 0x24fc);
+    assert_eq!(mmc.ppu_get_mirrored_address(0x2aaa), 0x26aa);
+    assert_eq!(mmc.ppu_get_mirrored_address(0x2c00), 0x2400);
+    assert_eq!(mmc.ppu_get_mirrored_address(0x2e20), 0x2620);
   }
 }

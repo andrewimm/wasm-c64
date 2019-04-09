@@ -18,9 +18,9 @@ void main() {
 
   float pattern_loc = tile_index / 256.;
 
-  uint low = texture(pattern_0, vec2(local_y / 2.0, pattern_loc)).r;
-  uint high = texture(pattern_0, vec2((1. + local_y) / 2.0, pattern_loc)).r;
-  uint shift = uint(7. - local_x);
+  uint low = texture(pattern_1, vec2(local_y / 2.0, pattern_loc)).r;
+  uint high = texture(pattern_1, vec2((1. + local_y) / 2.0, pattern_loc)).r;
+  uint shift = uint(round(8. - local_x));
   uint low_bit = (low >> shift) & 0x1u;
   uint high_bit = (high >> (shift - 1u)) & 0x2u;
   uint palette_index = low_bit | high_bit;

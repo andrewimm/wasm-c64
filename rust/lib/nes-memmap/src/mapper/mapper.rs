@@ -2,10 +2,13 @@ pub trait Mapper {
   fn cpu_get_byte(&mut self, addr: u16) -> u8;
   fn cpu_set_byte(&mut self, addr: u16, value: u8);
   fn ppu_get_byte(&self, addr: u16) -> u8;
+  fn ppu_set_byte(&mut self, addr: u16, value: u8);
   fn ppu_get_mirrored_address(&self, addr: u16) -> u16;
 
   fn set_prg_rom(&mut self, rom: &[u8]);
   fn set_chr_rom(&mut self, rom: &[u8]);
+  fn get_pattern_0_ptr(&self) -> *const u8;
+  fn get_pattern_1_ptr(&self) -> *const u8;
 }
 
 pub enum Mirroring {

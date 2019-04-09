@@ -2,6 +2,10 @@
 name = "nes-memmap"
 version = "0.1.0"
 authors = ["Andrew Imm <aimm22@gmail.com>"]
+edition = "2018"
 
 [lib]
 name = "nesmemmap"
+
+[dependencies]
+mos6510 = {path = "../mos6510"}

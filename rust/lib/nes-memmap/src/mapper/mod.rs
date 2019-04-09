@@ -4,10 +4,10 @@ mod mmc1;
 pub use self::mapper::Mapper;
 
 // Create a Mapper instance from an iNes ROM
-pub fn create_mapper(rom: &Vec<u8>) -> Result<Box<impl mapper::Mapper>, &'static str> {
+pub fn create_mapper(rom: &Vec<u8>) -> Box<Mapper> {
   let header = &rom[0..16];
   if header[0] != 0x4e || header[1] != 0x45 || header[2] != 0x53 || header[3] != 0x1a {
-    return Err("Invalid ROM header")
+    panic!("Invalid ROM header");
   }
 
   let config = mapper::Config {
@@ -18,22 +18,17 @@ pub fn create_mapper(rom: &Vec<u8>) -> Result<Box<impl mapper::Mapper>, &'static
   };
   let mapper_low = (header[6] & 0xf0) >> 4;
   let mapper_high = header[7] & 0xf0;
-  let mapper = mapper_low | mapper_high;
+  let mapper_id = mapper_low | mapper_high;
 
-  let m = match mapper {
-    0x01 => Ok(Box::new(mmc1::MMC1::new(config))),
-    _ => Err("Unsupported Mapper ID")
+  let mut mapper = match mapper_id {
+    0x01 => mmc1::MMC1::new(config),
+    _ => panic!("Unsupported Mapper ID"),
   };
 
-  match m {
-    Ok(mut mmc) => {
-      let prg_start = 16;
-      let prg_end = 0x4000 * header[4] as usize;
-      let chr_end = prg_end + 0x2000 * header[5] as usize;
-      mmc.set_prg_rom(&rom[prg_start..prg_end]);
-      mmc.set_chr_rom(&rom[prg_end..chr_end]);
-      Ok(mmc)
-    },
-    Err(msg) => Err(msg),
-  }
+  let prg_start = 16;
+  let prg_end = 16 + 0x4000 * header[4] as usize;
+  let chr_end = prg_end + 0x2000 * header[5] as usize;
+  mapper.set_prg_rom(&rom[prg_start..prg_end]);
+  mapper.set_chr_rom(&rom[prg_end..chr_end]);
+  Box::new(mapper)
 }
