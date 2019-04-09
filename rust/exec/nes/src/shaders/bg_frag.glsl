@@ -27,9 +27,9 @@ void main() {
 
   uint low = texture(pattern, vec2(local_y / 2.0, pattern_loc)).r;
   uint high = texture(pattern, vec2((1. + local_y) / 2.0, pattern_loc)).r;
-  uint shift = uint(round(8. - local_x));
+  uint shift = uint(floor(8. - local_x));
   uint low_bit = (low >> shift) & 0x1u;
-  uint high_bit = (high >> (shift - 1u)) & 0x2u;
+  uint high_bit = ((high >> shift) & 0x1u) << 1;
   uint palette_index = low_bit | high_bit;
 
   float attr_x = v_texcoord.x / 256.;

@@ -9,6 +9,9 @@ pub struct MemMap {
   pub ppu: PPU,
   pub ram: RAM,
   pub mapper: Box<Mapper>,
+
+  needs_dma: bool,
+  pub dma_source: u16,
 }
 
 impl Memory for MemMap {
@@ -45,6 +48,11 @@ impl Memory for MemMap {
       return;
     }
     if addr < 0x4018 { // APU + I/O
+      if addr == 0x4014 { // DMA
+        self.dma_source = (value as u16) << 8;
+        self.needs_dma = true;
+        return;
+      }
       let dest = addr - 0x4000;
       //return self.apu.get_byte(dest);
       return;
@@ -65,9 +73,28 @@ impl MemMap {
       ppu: PPU::new(),
       ram: RAM::new(),
       mapper: mapper,
+
+      needs_dma: false,
+      dma_source: 0,
     };
 
     return map;
+  }
+
+  pub fn dma_requested(&mut self) -> bool {
+    if self.needs_dma {
+      self.needs_dma = false;
+      true
+    } else {
+      false
+    }
+  }
+
+  pub fn dma_copy(&mut self) {
+    for i in 0..256 {
+      let byte = self.get_byte(self.dma_source + i);
+      self.ppu.write_oam(byte);
+    }
   }
 
   pub fn get_pattern_0_ptr(&self) -> *const u8 {

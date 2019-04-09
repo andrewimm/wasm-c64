@@ -12,7 +12,7 @@ impl Sprite {
   pub fn new() -> Sprite {
     Sprite {
       y_position: 0xff,
-      x_position: 0xff,
+      x_position: 0,
       tile_index: 0,
       palette: 0,
       flip_horizontal: false,

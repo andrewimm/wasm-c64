@@ -75,6 +75,16 @@ fn main() {
   let sprite_program = Rc::new(sprites::build_sprite_program());
   let mut sprite_meshes = sprites::create_sprite_meshes(&sprite_program);
 
+  for mesh in sprite_meshes.iter_mut() {
+    mesh.set_uniform(String::from("colors"), colors.as_uniform_value());
+    mesh.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
+  }
+
+  unsafe {
+    gl::Enable(gl::BLEND);
+    gl::BlendFuncSeparate(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA, gl::ONE, gl::ZERO);
+  }
+
   let mut vm = VM::new(mapper);
   vm.mem.ppu.set_scanline(241);
 
@@ -103,12 +113,16 @@ fn main() {
       // Run VM, draw result
       let mut total: u32 = 0;
       while total < 113 * 262 {
-        let cycles = vm.step();
+        let mut cycles = vm.step() as u32;
+        if vm.mem.dma_requested() {
+          vm.mem.dma_copy();
+          cycles += 514;
+        }
         vm.mem.ppu.add_cpu_cycles(cycles);
         if vm.mem.ppu.should_interrupt() {
           vm.cpu.nonmaskable_interrupt(&mut vm.mem);
         }
-        total += cycles as u32;
+        total += cycles;
       }
 
       let pattern_source = match vm.mem.ppu.background_address {
@@ -133,18 +147,33 @@ fn main() {
       let mut i = 0;
       for mesh in sprite_meshes.iter_mut() {
         let sprite = vm.mem.ppu.get_sprite(i);
-        sprites::update_sprite_mesh(mesh, sprite);
+        sprites::update_sprite_mesh(mesh, sprite, &vm.mem.ppu);
+
+        mesh.set_uniform(String::from("bgcolor"), UniformValue::Int(vm.mem.ppu.bg_color as i32));
+        let sprite_palette_0 = vm.mem.ppu.sprite_palette_0;
+        mesh.set_uniform(String::from("sprite_palette_0"), UniformValue::IntVec3(sprite_palette_0.0 as i32, sprite_palette_0.1 as i32, sprite_palette_0.2 as i32));
+        let sprite_palette_1 = vm.mem.ppu.sprite_palette_1;
+        mesh.set_uniform(String::from("sprite_palette_1"), UniformValue::IntVec3(sprite_palette_1.0 as i32, sprite_palette_1.1 as i32, sprite_palette_1.2 as i32));
+        let sprite_palette_2 = vm.mem.ppu.sprite_palette_2;
+        mesh.set_uniform(String::from("sprite_palette_2"), UniformValue::IntVec3(sprite_palette_2.0 as i32, sprite_palette_2.1 as i32, sprite_palette_2.2 as i32));
+        let sprite_palette_3 = vm.mem.ppu.sprite_palette_3;
+        mesh.set_uniform(String::from("sprite_palette_3"), UniformValue::IntVec3(sprite_palette_3.0 as i32, sprite_palette_3.1 as i32, sprite_palette_3.2 as i32));
+
         i += 1;
       }
 
       unsafe {
         gl::Clear(gl::COLOR_BUFFER_BIT);
       }
-      bg.make_current();
-      screen.draw();
-      sprite_program.make_current();
-      for sprite in sprite_meshes.iter_mut() {
-        sprite.draw();
+      if vm.mem.ppu.show_bg {
+        bg.make_current();
+        screen.draw();
+      }
+      if vm.mem.ppu.show_sprites {
+        sprite_program.make_current();
+        for sprite in sprite_meshes.iter_mut() {
+          sprite.draw();
+        }
       }
     }
 

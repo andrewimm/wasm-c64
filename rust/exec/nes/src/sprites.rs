@@ -2,6 +2,7 @@ use gllite::program::Program;
 use gllite::node::Node;
 use gllite::uniforms::UniformValue;
 use std::rc::Rc;
+use nesmemmap::ppu::PPU;
 use nesmemmap::sprite::Sprite;
 
 pub fn build_sprite_program() -> Program {
@@ -35,7 +36,16 @@ pub fn create_sprite_meshes(p: &Rc<Program>) -> Vec<Node> {
   sprites
 }
 
-pub fn update_sprite_mesh(mesh: &mut Node, sprite: &Sprite) {
+pub fn update_sprite_mesh(mesh: &mut Node, sprite: &Sprite, ppu: &PPU) {
   mesh.set_uniform(String::from("position_x"), UniformValue::Float(sprite.x_position as f32));
-  mesh.set_uniform(String::from("position_y"), UniformValue::Float(sprite.y_position as f32));
+  // Sprites are delayed by one scanline
+  mesh.set_uniform(String::from("position_y"), UniformValue::Float(sprite.y_position as f32 + 1.0));
+  mesh.set_uniform(String::from("height_scale"), UniformValue::Float(if ppu.double_height_sprites { 2.0 } else { 1.0 }));
+  mesh.set_uniform(String::from("tile_index"), UniformValue::Float(sprite.tile_index as f32));
+  mesh.set_uniform(String::from("sprite_palette"), UniformValue::Int(sprite.palette as i32));
+  let mut flip: i32 = if sprite.flip_horizontal { 1 } else { 0 };
+  if sprite.flip_vertical {
+    flip = flip | 2;
+  }
+  mesh.set_uniform(String::from("flip"), UniformValue::Int(flip))
 }

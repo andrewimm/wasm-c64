@@ -37,14 +37,14 @@ pub struct PPU {
   vram_increment: VRAMIncrement,
   square_sprite_address: SpriteTableAddress,
   pub background_address: BackgroundTableAddress,
-  double_width_sprites: bool,
+  pub double_height_sprites: bool,
   nmi_enabled: bool,
 
   greyscale: bool,
   show_left_sprites: bool,
   show_left_bg: bool,
-  show_bg: bool,
-  show_sprites: bool,
+  pub show_bg: bool,
+  pub show_sprites: bool,
   emphasize_red: bool,
   emphasize_green: bool,
   emphasize_blue: bool,
@@ -59,7 +59,7 @@ pub struct PPU {
 
   vblank: bool,
   scanline: u16,
-  cpu_cycles: u8,
+  cpu_cycles: u32,
   needs_interrupt: bool,
 
   ppu_address: u16,
@@ -73,6 +73,10 @@ pub struct PPU {
   pub bg_palette_1: Palette,
   pub bg_palette_2: Palette,
   pub bg_palette_3: Palette,
+  pub sprite_palette_0: Palette,
+  pub sprite_palette_1: Palette,
+  pub sprite_palette_2: Palette,
+  pub sprite_palette_3: Palette,
 }
 
 impl PPU {
@@ -86,7 +90,7 @@ impl PPU {
       vram_increment: VRAMIncrement::Across,
       square_sprite_address: SpriteTableAddress::Base,
       background_address: BackgroundTableAddress::Base,
-      double_width_sprites: false,
+      double_height_sprites: false,
       nmi_enabled: false,
 
       greyscale: false,
@@ -122,13 +126,17 @@ impl PPU {
       bg_palette_1: (0, 0, 0),
       bg_palette_2: (0, 0, 0),
       bg_palette_3: (0, 0, 0),
+      sprite_palette_0: (0, 0, 0),
+      sprite_palette_1: (0, 0, 0),
+      sprite_palette_2: (0, 0, 0),
+      sprite_palette_3: (0, 0, 0),
     }
   }
 
-  pub fn add_cpu_cycles(&mut self, cycles: u8) {
+  pub fn add_cpu_cycles(&mut self, cycles: u32) {
     self.cpu_cycles += cycles;
-    if self.cpu_cycles > 113 {
-      self.cpu_cycles = 0;
+    while self.cpu_cycles > 113 {
+      self.cpu_cycles -= 113;
       self.increment_scanline();
     }
   }
@@ -175,7 +183,7 @@ impl PPU {
         self.vram_increment = if value & 4 == 4 { VRAMIncrement::Down } else { VRAMIncrement::Across };
         self.square_sprite_address = if value & 8 == 8 { SpriteTableAddress::Offset } else { SpriteTableAddress::Base };
         self.background_address = if value & 0x10 == 0x10 { BackgroundTableAddress::Offset } else { BackgroundTableAddress::Base };
-        self.double_width_sprites = value & 0x20 == 0x20;
+        self.double_height_sprites = value & 0x20 == 0x20;
         // ignoring EXT pins for now, they're unused in stock NES
         self.nmi_enabled = value & 0x80 == 0x80;
         self.latch = value;
@@ -199,10 +207,7 @@ impl PPU {
         self.latch = value;
       },
       4 => { // set OAM Data
-        let index = (self.oamaddr >> 2) as usize;
-        self.sprites[index].set_oam_byte(self.oamaddr & 3, value);
-        self.oamaddr.wrapping_add(1);
-
+        self.write_oam(value);
         self.latch = value;
       },
       5 => { // PPU Scroll position
@@ -257,6 +262,21 @@ impl PPU {
             0xe => self.bg_palette_3.1 = value,
             0xf => self.bg_palette_3.2 = value,
             0x10 => self.bg_color = value,
+            0x11 => self.sprite_palette_0.0 = value,
+            0x12 => self.sprite_palette_0.1 = value,
+            0x13 => self.sprite_palette_0.2 = value,
+            0x14 => (),
+            0x15 => self.sprite_palette_1.0 = value,
+            0x16 => self.sprite_palette_1.1 = value,
+            0x17 => self.sprite_palette_1.2 = value,
+            0x18 => (),
+            0x19 => self.sprite_palette_2.0 = value,
+            0x1a => self.sprite_palette_2.1 = value,
+            0x1b => self.sprite_palette_2.2 = value,
+            0x1c => (),
+            0x1d => self.sprite_palette_3.0 = value,
+            0x1e => self.sprite_palette_3.1 = value,
+            0x1f => self.sprite_palette_3.2 = value,
             _ => (),
           };
         }
@@ -265,6 +285,12 @@ impl PPU {
       },
       _ => (),
     };
+  }
+
+  pub fn write_oam(&mut self, value: u8) {
+    let index = (self.oamaddr >> 2) as usize;
+    self.sprites[index].set_oam_byte(self.oamaddr & 3, value);
+    self.oamaddr = self.oamaddr.wrapping_add(1);
   }
 
   pub fn get_byte(&mut self, addr: u16, mapper: &Box<Mapper>) -> u8 {
