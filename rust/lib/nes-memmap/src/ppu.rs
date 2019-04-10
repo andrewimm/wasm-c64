@@ -18,7 +18,7 @@ enum VRAMIncrement {
 
 // Address of patterns for square 8x8 sprites
 #[derive(PartialEq)]
-enum SpriteTableAddress {
+pub enum SpriteTableAddress {
   Base, // 0x0000
   Offset, // 0x1000
 }
@@ -35,7 +35,7 @@ type Palette = (u8, u8, u8);
 pub struct PPU {
   nametable_address: NametableAddress,
   vram_increment: VRAMIncrement,
-  square_sprite_address: SpriteTableAddress,
+  pub square_sprite_address: SpriteTableAddress,
   pub background_address: BackgroundTableAddress,
   pub double_height_sprites: bool,
   nmi_enabled: bool,

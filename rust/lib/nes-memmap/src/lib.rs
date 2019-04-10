@@ -1,5 +1,6 @@
 #![feature(box_syntax)]
 
+pub mod controller;
 pub mod mapper;
 pub mod memmap;
 pub mod ppu;

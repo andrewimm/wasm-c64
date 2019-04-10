@@ -1,5 +1,6 @@
 #![feature(box_syntax)]
 
+use glutin::{VirtualKeyCode};
 use gllite;
 use gllite::gli;
 use gllite::uniforms::UniformValue;
@@ -14,6 +15,7 @@ use std::thread;
 use std::time::{self, SystemTime};
 
 use nesmemmap::mapper;
+use nesmemmap::ppu::SpriteTableAddress;
 use mos6510::memory::Memory;
 mod palette;
 mod sprites;
@@ -93,7 +95,6 @@ fn main() {
 
   for mesh in sprite_meshes.iter_mut() {
     mesh.set_uniform(String::from("colors"), colors.as_uniform_value());
-    mesh.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
   }
 
   unsafe {
@@ -126,6 +127,33 @@ fn main() {
     }
 
     if shell.in_foreground() {
+      for key in shell.keys_down.iter() {
+        match key {
+          VirtualKeyCode::Return => vm.mem.controller_0.start = true,
+          VirtualKeyCode::RShift => vm.mem.controller_0.select = true,
+          VirtualKeyCode::X => vm.mem.controller_0.a = true,
+          VirtualKeyCode::Z => vm.mem.controller_0.b = true,
+          VirtualKeyCode::Left => vm.mem.controller_0.left = true,
+          VirtualKeyCode::Right => vm.mem.controller_0.right = true,
+          VirtualKeyCode::Up => vm.mem.controller_0.up = true,
+          VirtualKeyCode::Down => vm.mem.controller_0.down = true,
+          _ => (),
+        }
+      }
+      for key in shell.keys_up.iter() {
+        match key {
+          VirtualKeyCode::Return => vm.mem.controller_0.start = false,
+          VirtualKeyCode::RShift => vm.mem.controller_0.select = false,
+          VirtualKeyCode::X => vm.mem.controller_0.a = false,
+          VirtualKeyCode::Z => vm.mem.controller_0.b = false,
+          VirtualKeyCode::Left => vm.mem.controller_0.left = false,
+          VirtualKeyCode::Right => vm.mem.controller_0.right = false,
+          VirtualKeyCode::Up => vm.mem.controller_0.up = false,
+          VirtualKeyCode::Down => vm.mem.controller_0.down = false,
+          _ => (),
+        }
+      }
+
       // Run VM, draw result
       let mut total: u32 = 0;
       while total < 113 * 262 {
@@ -181,6 +209,22 @@ fn main() {
       for mesh in sprite_meshes.iter_mut() {
         let sprite = vm.mem.ppu.get_sprite(63 - i);
         sprites::update_sprite_mesh(mesh, sprite, &vm.mem.ppu);
+        let tile_index = sprite.tile_index;
+        if vm.mem.ppu.double_height_sprites {
+          if tile_index & 1 == 1 {
+            mesh.set_uniform(String::from("pattern"), pattern_1.as_uniform_value());
+          } else {
+            mesh.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
+          }
+          mesh.set_uniform(String::from("tile_index"), UniformValue::Float((tile_index & 0xfe) as f32));
+        } else {
+          if vm.mem.ppu.square_sprite_address == SpriteTableAddress::Base {
+            mesh.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
+          } else {
+            mesh.set_uniform(String::from("pattern"), pattern_1.as_uniform_value());
+          }
+          mesh.set_uniform(String::from("tile_index"), UniformValue::Float(tile_index as f32));
+        }
 
         mesh.set_uniform(String::from("bgcolor"), UniformValue::Int(vm.mem.ppu.bg_color as i32));
         let sprite_palette_0 = vm.mem.ppu.sprite_palette_0;

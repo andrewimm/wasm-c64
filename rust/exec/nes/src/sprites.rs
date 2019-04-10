@@ -41,7 +41,6 @@ pub fn update_sprite_mesh(mesh: &mut Node, sprite: &Sprite, ppu: &PPU) {
   // Sprites are delayed by one scanline
   mesh.set_uniform(String::from("position_y"), UniformValue::Float(sprite.y_position as f32 + 1.0));
   mesh.set_uniform(String::from("height_scale"), UniformValue::Float(if ppu.double_height_sprites { 2.0 } else { 1.0 }));
-  mesh.set_uniform(String::from("tile_index"), UniformValue::Float(sprite.tile_index as f32));
   mesh.set_uniform(String::from("sprite_palette"), UniformValue::Int(sprite.palette as i32));
   let mut flip: i32 = if sprite.flip_horizontal { 1 } else { 0 };
   if sprite.flip_vertical {

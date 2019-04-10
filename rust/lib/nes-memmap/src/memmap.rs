@@ -1,4 +1,5 @@
 //use apu::APU;
+use crate::controller::Controller;
 use crate::mapper::Mapper;
 use crate::ppu::PPU;
 use crate::ram::RAM;
@@ -9,6 +10,7 @@ pub struct MemMap {
   pub ppu: PPU,
   pub ram: RAM,
   pub mapper: Box<Mapper>,
+  pub controller_0: Controller,
 
   needs_dma: bool,
   pub dma_source: u16,
@@ -25,6 +27,9 @@ impl Memory for MemMap {
       return self.ppu.get_byte(addr, &self.mapper);
     }
     if addr < 0x4018 { // APU + I/O
+      if addr == 0x4016 {
+        return self.controller_0.read_latch();
+      }
       let dest = addr - 0x4000;
       //return self.apu.get_byte(dest);
       return 0;
@@ -53,6 +58,14 @@ impl Memory for MemMap {
         self.needs_dma = true;
         return;
       }
+      if addr == 0x4016 {
+        if value & 1 == 1 {
+          self.controller_0.begin_latch();
+        } else {
+          self.controller_0.end_latch();
+        }
+        return;
+      }
       let dest = addr - 0x4000;
       //return self.apu.get_byte(dest);
       return;
@@ -70,6 +83,7 @@ impl MemMap {
   pub fn new(mapper: Box<Mapper>) -> MemMap {
     let mut map = MemMap {
       //apu: APU::new(),
+      controller_0: Controller::new(),
       ppu: PPU::new(),
       ram: RAM::new(),
       mapper: mapper,
