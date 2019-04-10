@@ -9,6 +9,7 @@ pub trait Mapper {
   fn set_chr_rom(&mut self, rom: &[u8]);
   fn get_pattern_0_ptr(&self) -> *const u8;
   fn get_pattern_1_ptr(&self) -> *const u8;
+  fn get_nametable_offsets(&self) -> (usize, usize, usize, usize);
 }
 
 pub enum Mirroring {

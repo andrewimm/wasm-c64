@@ -342,11 +342,37 @@ impl PPU {
     self.sprites.get(index).unwrap()
   }
 
-  pub fn get_nametable_ptr(&self) -> *const u8 {
-    &self.ciram[0] as *const u8
+  pub fn get_nametable_ptrs(&self, offsets: (usize, usize, usize, usize)) -> (*const u8, *const u8, *const u8, *const u8) {
+    let (tl, tr, bl, br) = offsets;
+    (&self.ciram[tl] as *const u8, &self.ciram[tr] as *const u8, &self.ciram[bl] as *const u8, &self.ciram[br] as *const u8)
   }
 
-  pub fn get_attribute_ptr(&self) -> *const u8 {
-    &self.ciram[960] as *const u8
+  pub fn get_attribute_ptrs(&self, offsets: (usize, usize, usize, usize)) -> (*const u8, *const u8, *const u8, *const u8) {
+    let (tl, tr, bl, br) = offsets;
+    (
+      &self.ciram[tl + 960] as *const u8,
+      &self.ciram[tr + 960] as *const u8,
+      &self.ciram[bl + 960] as *const u8,
+      &self.ciram[br + 960] as *const u8
+    )
+  }
+
+  pub fn get_scroll_offset(&self) -> (u16, u16) {
+    let mut x = self.scroll_x as u16;
+    let mut y = self.scroll_y as u16;
+    match self.nametable_address {
+      NametableAddress::Table0 => (),
+      NametableAddress::Table1 => {
+        x += 256;
+      },
+      NametableAddress::Table2 => {
+        y += 240;
+      },
+      NametableAddress::Table3 => {
+        x += 256;
+        y += 240;
+      },
+    };
+    (x, y)
   }
 }

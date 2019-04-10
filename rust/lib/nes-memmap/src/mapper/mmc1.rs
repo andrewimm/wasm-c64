@@ -247,6 +247,15 @@ impl Mapper for MMC1 {
       ChrMem::Rom(mem) => &mem[0x1000] as *const u8,
     }
   }
+
+  fn get_nametable_offsets(&self) -> (usize, usize, usize, usize) {
+    (
+      self.ppu_get_mirrored_address(0x2000) as usize - 0x2000,
+      self.ppu_get_mirrored_address(0x2400) as usize - 0x2000,
+      self.ppu_get_mirrored_address(0x2800) as usize - 0x2000,
+      self.ppu_get_mirrored_address(0x2c00) as usize - 0x2000,
+    )
+  }
 }
 
 #[cfg(test)]

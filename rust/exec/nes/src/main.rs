@@ -5,6 +5,7 @@ use gllite::gli;
 use gllite::uniforms::UniformValue;
 use std::env;
 use std::error::Error;
+use std::ffi::c_void;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -55,12 +56,27 @@ fn main() {
   pattern_1.set_filter_mode(gli::NEAREST, gli::NEAREST);
 
   let mut nametable = gllite::texture::Texture::new();
-  nametable.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  nametable.set_wrap_mode(gli::REPEAT, gli::REPEAT);
   nametable.set_filter_mode(gli::NEAREST, gli::NEAREST);
+  let nt_data: [u8; 64 * 60] = [0; 64 * 60];
+  nametable.set_from_bytes(gli::R8UI, 64, 60, gli::RED_INTEGER, &nt_data[0] as *const u8);
 
   let mut attributes = gllite::texture::Texture::new();
-  attributes.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  attributes.set_wrap_mode(gli::REPEAT, gli::REPEAT);
   attributes.set_filter_mode(gli::NEAREST, gli::NEAREST);
+  let attr_data: [u8; 16 * 16] = [0; 16 * 16];
+  attributes.set_from_bytes(gli::R8UI, 16, 16, gli::RED_INTEGER, &attr_data[0] as *const u8);
+
+  // hack, need to make gl texture unit public
+  let mut nt_unit = 0;
+  if let UniformValue::Texture2D(u) = nametable.as_uniform_value() {
+    nt_unit = u;
+  }
+  let mut attr_unit = 0;
+  if let UniformValue::Texture2D(u) = attributes.as_uniform_value() {
+    attr_unit = u;
+  }
+  
 
   let mut colors = gllite::texture::Texture::new();
   colors.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
@@ -141,12 +157,29 @@ fn main() {
       screen.set_uniform(String::from("bg_palette_3"), UniformValue::IntVec3(bg_palette_3.0 as i32, bg_palette_3.1 as i32, bg_palette_3.2 as i32));
       pattern_0.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, vm.mem.get_pattern_0_ptr());
       pattern_1.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, vm.mem.get_pattern_1_ptr());
-      nametable.set_from_bytes(gli::R8UI, 32, 30, gli::RED_INTEGER, vm.mem.ppu.get_nametable_ptr());
-      attributes.set_from_bytes(gli::R8UI, 8, 8, gli::RED_INTEGER, vm.mem.ppu.get_attribute_ptr());
+      let nt_offsets = vm.mem.mapper.get_nametable_offsets();
+      let nt_pointers = vm.mem.ppu.get_nametable_ptrs(nt_offsets);
+      let attr_pointers = vm.mem.ppu.get_attribute_ptrs(nt_offsets);
+
+      unsafe {
+        gl::BindTexture(gl::TEXTURE_2D, nt_unit);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 0, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.0 as *const c_void);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 32, 0, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.1 as *const c_void);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 30, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.2 as *const c_void);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 32, 30, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.3 as *const c_void);
+        gl::BindTexture(gl::TEXTURE_2D, attr_unit);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 0, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.0 as *const c_void);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 8, 0, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.1 as *const c_void);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 8, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.2 as *const c_void);
+        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 8, 8, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.3 as *const c_void);
+      }
+
+      let scroll_offset = vm.mem.ppu.get_scroll_offset();
+      screen.set_uniform(String::from("offset"), UniformValue::FloatVec2(scroll_offset.0 as f32, scroll_offset.1 as f32));
 
       let mut i = 0;
       for mesh in sprite_meshes.iter_mut() {
-        let sprite = vm.mem.ppu.get_sprite(i);
+        let sprite = vm.mem.ppu.get_sprite(63 - i);
         sprites::update_sprite_mesh(mesh, sprite, &vm.mem.ppu);
 
         mesh.set_uniform(String::from("bgcolor"), UniformValue::Int(vm.mem.ppu.bg_color as i32));
@@ -175,9 +208,9 @@ fn main() {
           sprite.draw();
         }
       }
-    }
 
-    shell.swap_buffers();
+      shell.swap_buffers();
+    }
   }
 }
 
