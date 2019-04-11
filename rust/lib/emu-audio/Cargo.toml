@@ -1,0 +1,16 @@
+[package]
+name = "emu-audio"
+version = "0.1.0"
+authors = ["Andrew Imm <aimm22@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "emuaudio"
+path = "src/lib.rs"
+
+[[bin]]
+name = "demo"
+path = "examples/demo/main.rs"
+
+[dependencies]
+cpal = "0.8.2"

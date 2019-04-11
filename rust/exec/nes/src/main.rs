@@ -14,6 +14,7 @@ use std::rc::Rc;
 use std::thread;
 use std::time::{self, SystemTime};
 
+mod apu;
 use nesmemmap::mapper;
 use nesmemmap::ppu::SpriteTableAddress;
 use mos6510::memory::Memory;
@@ -78,6 +79,8 @@ fn main() {
   if let UniformValue::Texture2D(u) = attributes.as_uniform_value() {
     attr_unit = u;
   }
+
+  let mut a_press = false;
   
 
   let mut colors = gllite::texture::Texture::new();
@@ -137,6 +140,12 @@ fn main() {
           VirtualKeyCode::Right => vm.mem.controller_0.right = true,
           VirtualKeyCode::Up => vm.mem.controller_0.up = true,
           VirtualKeyCode::Down => vm.mem.controller_0.down = true,
+          VirtualKeyCode::A => {
+            if !a_press {
+              vm.mem.apu.test_note();
+              a_press = true;
+            }
+          }
           _ => (),
         }
       }
@@ -150,6 +159,7 @@ fn main() {
           VirtualKeyCode::Right => vm.mem.controller_0.right = false,
           VirtualKeyCode::Up => vm.mem.controller_0.up = false,
           VirtualKeyCode::Down => vm.mem.controller_0.down = false,
+          VirtualKeyCode::A => a_press = false,
           _ => (),
         }
       }

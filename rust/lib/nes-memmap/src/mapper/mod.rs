@@ -1,5 +1,6 @@
 mod mapper;
 mod mmc1;
+mod nrom;
 
 pub use self::mapper::Mapper;
 
@@ -20,8 +21,9 @@ pub fn create_mapper(rom: &Vec<u8>) -> Box<Mapper> {
   let mapper_high = header[7] & 0xf0;
   let mapper_id = mapper_low | mapper_high;
 
-  let mut mapper = match mapper_id {
-    0x01 => mmc1::MMC1::new(config),
+  let mut mapper: Box<Mapper> = match mapper_id {
+    0x00 => Box::new(nrom::NROM::new(config)),
+    0x01 => Box::new(mmc1::MMC1::new(config)),
     _ => panic!("Unsupported Mapper ID"),
   };
 
@@ -30,5 +32,5 @@ pub fn create_mapper(rom: &Vec<u8>) -> Box<Mapper> {
   let chr_end = prg_end + 0x2000 * header[5] as usize;
   mapper.set_prg_rom(&rom[prg_start..prg_end]);
   mapper.set_chr_rom(&rom[prg_end..chr_end]);
-  Box::new(mapper)
+  mapper
 }

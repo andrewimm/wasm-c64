@@ -1,3 +1,4 @@
+use crate::apu::APUImpl;
 use mos6510::cpu::CPU;
 use nesmemmap::mapper;
 use nesmemmap::memmap::MemMap;
@@ -11,9 +12,10 @@ const CYCLES_PER_MS: u32 = 1023;
 
 impl VM {
   pub fn new(mapper: Box<mapper::Mapper>) -> VM {
+    let apu = Box::new(APUImpl::new());
     let mut vm = VM {
       cpu: CPU::new(),
-      mem: MemMap::new(mapper),
+      mem: MemMap::new(mapper, apu),
     };
 
     vm.reset();
