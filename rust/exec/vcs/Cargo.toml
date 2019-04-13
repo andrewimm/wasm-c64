@@ -1,0 +1,13 @@
+[package]
+name = "vcs"
+version = "0.1.0"
+authors = ["Andrew Imm <aimm22@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+glutin = "0.20.0"
+gl = "0.11.0"
+gl-lite = "0.1.2"
+emu-shell = {path = "../../lib/emu-shell"}
+vcs-memmap = {path = "../../lib/vcs-memmap"}
+mos6510 = {path = "../../lib/mos6510"}
