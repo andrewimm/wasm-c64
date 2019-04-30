@@ -233,7 +233,7 @@ impl PPU {
       7 => { // PPU Data
         if self.ppu_address < 0x2000 {
           // pattern table
-          mapper.ppu_set_byte(self.ppu_address, value);
+          //mapper.ppu_set_byte(self.ppu_address, value);
         } else if self.ppu_address < 0x3eff {
           // nametables
           let mut orig = self.ppu_address;
@@ -374,5 +374,15 @@ impl PPU {
       },
     };
     (x, y)
+  }
+
+  pub fn dump(&self) {
+    println!("PPU DUMP");
+    for j in 0..30 {
+      for i in 0..32 {
+        print!("{:x} ", self.ciram[j * 32 + i]);
+      }
+      print!("\n");
+    }
   }
 }

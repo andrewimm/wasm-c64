@@ -2,7 +2,7 @@ use crate::mapper::mapper::{ChrMem, Config, Mapper, Mirroring};
 
 pub struct NROM {
   prg_ram: Box<[u8; 0x2000]>,
-  prg_rom: Box<[u8; 0x4000]>,
+  prg_rom: Box<[u8; 0x8000]>,
   chr_mem: ChrMem,
 
   config: Config,
@@ -17,7 +17,7 @@ impl NROM {
     };
     NROM {
       prg_ram: box [0; 0x2000],
-      prg_rom: box [0; 0x4000],
+      prg_rom: box [0; 0x8000],
       chr_mem: chr,
 
       config: config,
@@ -46,7 +46,7 @@ impl Mapper for NROM {
       // 8KB PRG RAM
       return self.prg_ram[(addr - 0x6000) as usize];
     }
-    if addr < 0xc000 {
+    if addr < 0xc000 || self.config.prg_rom_size == 2 {
       // First PRG ROM bank
       return self.prg_rom[(addr - 0x8000) as usize];
     }

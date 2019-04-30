@@ -16,6 +16,6 @@ void main() {
   scaled.y *= height_scale;
   scaled.x += position_x;
   scaled.y += position_y;
-  gl_Position = vec4(scaled.x / 128. - 1., 1. - scaled.y / 120., 0, 1);
+  gl_Position = vec4(scaled.x / 256. - 1., 1. - scaled.y / 120., 0, 1);
   v_texcoord = vec2(a_position.x, a_position.y * height_scale);
 }

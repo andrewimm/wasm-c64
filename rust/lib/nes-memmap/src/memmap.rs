@@ -2,12 +2,14 @@ use crate::apu::APU;
 use crate::controller::Controller;
 use crate::mapper::Mapper;
 use crate::ppu::PPU;
+use crate::ppu2::PPU2;
 use crate::ram::RAM;
 use mos6510::memory::Memory;
 
 pub struct MemMap {
   pub apu: Box<APU>,
   pub ppu: PPU,
+  pub ppu2: PPU2,
   pub ram: RAM,
   pub mapper: Box<Mapper>,
   pub controller_0: Controller,
@@ -24,7 +26,8 @@ impl Memory for MemMap {
     }
     if addr < 0x4000 { // PPU
       let dest = (addr - 0x2000) % 8;
-      return self.ppu.get_byte(addr, &self.mapper);
+      //self.ppu.get_byte(addr, &self.mapper);
+      return self.ppu2.get_byte(addr, &self.mapper);
     }
     if addr < 0x4018 { // APU + I/O
       if addr == 0x4016 {
@@ -49,7 +52,8 @@ impl Memory for MemMap {
     }
     if addr < 0x4000 { // PPU
       let dest = (addr - 0x2000) % 8;
-      self.ppu.set_byte(dest, value, &mut self.mapper);
+      //self.ppu.set_byte(dest, value, &mut self.mapper);
+      self.ppu2.set_byte(dest, value, &mut self.mapper);
       return;
     }
     if addr < 0x4018 { // APU + I/O
@@ -121,7 +125,7 @@ impl Memory for MemMap {
         return;
       }
       if addr == 0x4017 {
-        println!("0x4017 {:x}", value);
+        //println!("0x4017 {:x}", value);
       }
       return;
     }
@@ -140,6 +144,7 @@ impl MemMap {
       apu: apu,
       controller_0: Controller::new(),
       ppu: PPU::new(),
+      ppu2: PPU2::new(),
       ram: RAM::new(),
       mapper: mapper,
 
@@ -162,7 +167,8 @@ impl MemMap {
   pub fn dma_copy(&mut self) {
     for i in 0..256 {
       let byte = self.get_byte(self.dma_source + i);
-      self.ppu.write_oam(byte);
+      //self.ppu.write_oam(byte);
+      self.ppu2.write_oam(byte);
     }
   }
 
@@ -172,5 +178,9 @@ impl MemMap {
 
   pub fn get_pattern_1_ptr(&self) -> *const u8 {
     self.mapper.get_pattern_1_ptr()
+  }
+
+  pub fn increment_clock(&mut self) {
+    self.ppu2.increment_clock(&self.mapper);
   }
 }

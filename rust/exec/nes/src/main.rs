@@ -30,6 +30,39 @@ fn main() {
   shell.make_active_gl_context();
   shell.set_title("Rust NES");
 
+  // scanline program
+  let scanline_frag = include_str!("shaders/scanline_frag.glsl");
+  let scanline_vert = include_str!("shaders/scanline_vert.glsl");
+  let mut scanline_program = gllite::program::Program::new();
+  scanline_program
+    .add_shader(scanline_vert, gl::VERTEX_SHADER)
+    .add_shader(scanline_frag, gl::FRAGMENT_SHADER)
+    .compile();
+  scanline_program.make_current();
+
+  let scanline_prog = Rc::new(scanline_program);
+
+  let mut scanline_screen = gllite::node::Node::for_program(Rc::clone(&scanline_prog));
+  let scanline_vertices: [f32; 12] = [
+    0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+    1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+  ];
+  scanline_screen.add_attribute(String::from("a_position"));
+  scanline_screen.buffer_data(&scanline_vertices);
+
+  let mut scanline_tex = gllite::texture::Texture::new();
+  scanline_tex.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  scanline_tex.set_filter_mode(gli::NEAREST, gli::NEAREST);
+
+  let mut colors_tex = gllite::texture::Texture::new();
+  colors_tex.set_wrap_mode(gli::CLAMP_TO_EDGE, gli::CLAMP_TO_EDGE);
+  colors_tex.set_filter_mode(gli::NEAREST, gli::NEAREST);
+  colors_tex.set_from_bytes(gli::RGBA, 64, 1, gli::RGBA, &palette::COLORS[0] as *const u8);
+
+  scanline_screen.set_uniform(String::from("scanline"), scanline_tex.as_uniform_value());
+  scanline_screen.set_uniform(String::from("colors"), colors_tex.as_uniform_value());
+  // scanline program end
+
   let shader_bg_frag = include_str!("shaders/bg_frag.glsl");
   let shader_bg_vert = include_str!("shaders/bg_vert.glsl");
 
@@ -117,11 +150,14 @@ fn main() {
     };
     last_frame_time = now;
 
-    if delta < 16 {
+    /*if delta < 16 {
       let diff = 16 - delta;
       let sleeptime = time::Duration::from_millis(diff as u64);
       thread::sleep(sleeptime);
       delta += diff;
+    }*/
+    if delta > 32 {
+      delta = 32;
     }
 
     shell.update();
@@ -145,7 +181,7 @@ fn main() {
               vm.mem.apu.test_note();
               a_press = true;
             }
-          }
+          },
           _ => (),
         }
       }
@@ -164,104 +200,36 @@ fn main() {
         }
       }
 
+      let mut copied_scanline = false;
       // Run VM, draw result
+      let cycles_for_this_frame = (delta * 1790) as u32;
       let mut total: u32 = 0;
-      while total < 113 * 262 {
+      while total < cycles_for_this_frame {
         let mut cycles = vm.step() as u32;
         if vm.mem.dma_requested() {
           vm.mem.dma_copy();
           cycles += 514;
         }
-        vm.mem.ppu.add_cpu_cycles(cycles);
-        if vm.mem.ppu.should_interrupt() {
+
+        for _ in 0..(cycles * 3) {
+          vm.mem.increment_clock();
+          if !copied_scanline && vm.mem.ppu2.in_vblank() {
+            copied_scanline = true;
+            scanline_tex.set_from_bytes(gli::R8UI, 256, 240, gli::RED_INTEGER, vm.mem.ppu2.buffer_ptr());
+          }
+        }
+        if vm.mem.ppu2.should_interrupt() {
           vm.cpu.nonmaskable_interrupt(&mut vm.mem);
         }
         total += cycles;
       }
 
-      let pattern_source = match vm.mem.ppu.background_address {
-        nesmemmap::ppu::BackgroundTableAddress::Base => pattern_0.as_uniform_value(),
-        nesmemmap::ppu::BackgroundTableAddress::Offset => pattern_1.as_uniform_value(),
-      };
-      screen.set_uniform(String::from("pattern"), pattern_source);
-      screen.set_uniform(String::from("bgcolor"), UniformValue::Int(vm.mem.ppu.bg_color as i32));
-      let bg_palette_0 = vm.mem.ppu.bg_palette_0;
-      screen.set_uniform(String::from("bg_palette_0"), UniformValue::IntVec3(bg_palette_0.0 as i32, bg_palette_0.1 as i32, bg_palette_0.2 as i32));
-      let bg_palette_1 = vm.mem.ppu.bg_palette_1;
-      screen.set_uniform(String::from("bg_palette_1"), UniformValue::IntVec3(bg_palette_1.0 as i32, bg_palette_1.1 as i32, bg_palette_1.2 as i32));
-      let bg_palette_2 = vm.mem.ppu.bg_palette_2;
-      screen.set_uniform(String::from("bg_palette_2"), UniformValue::IntVec3(bg_palette_2.0 as i32, bg_palette_2.1 as i32, bg_palette_2.2 as i32));
-      let bg_palette_3 = vm.mem.ppu.bg_palette_3;
-      screen.set_uniform(String::from("bg_palette_3"), UniformValue::IntVec3(bg_palette_3.0 as i32, bg_palette_3.1 as i32, bg_palette_3.2 as i32));
-      pattern_0.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, vm.mem.get_pattern_0_ptr());
-      pattern_1.set_from_bytes(gli::R8UI, 16, 256, gli::RED_INTEGER, vm.mem.get_pattern_1_ptr());
-      let nt_offsets = vm.mem.mapper.get_nametable_offsets();
-      let nt_pointers = vm.mem.ppu.get_nametable_ptrs(nt_offsets);
-      let attr_pointers = vm.mem.ppu.get_attribute_ptrs(nt_offsets);
-
-      unsafe {
-        gl::BindTexture(gl::TEXTURE_2D, nt_unit);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 0, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.0 as *const c_void);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 32, 0, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.1 as *const c_void);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 30, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.2 as *const c_void);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 32, 30, 32, 30, gl::RED_INTEGER, gl::UNSIGNED_BYTE, nt_pointers.3 as *const c_void);
-        gl::BindTexture(gl::TEXTURE_2D, attr_unit);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 0, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.0 as *const c_void);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 8, 0, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.1 as *const c_void);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 0, 8, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.2 as *const c_void);
-        gl::TexSubImage2D(gl::TEXTURE_2D, 0, 8, 8, 8, 8, gl::RED_INTEGER, gl::UNSIGNED_BYTE, attr_pointers.3 as *const c_void);
-      }
-
-      let scroll_offset = vm.mem.ppu.get_scroll_offset();
-      screen.set_uniform(String::from("offset"), UniformValue::FloatVec2(scroll_offset.0 as f32, scroll_offset.1 as f32));
-
-      let mut i = 0;
-      for mesh in sprite_meshes.iter_mut() {
-        let sprite = vm.mem.ppu.get_sprite(63 - i);
-        sprites::update_sprite_mesh(mesh, sprite, &vm.mem.ppu);
-        let tile_index = sprite.tile_index;
-        if vm.mem.ppu.double_height_sprites {
-          if tile_index & 1 == 1 {
-            mesh.set_uniform(String::from("pattern"), pattern_1.as_uniform_value());
-          } else {
-            mesh.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
-          }
-          mesh.set_uniform(String::from("tile_index"), UniformValue::Float((tile_index & 0xfe) as f32));
-        } else {
-          if vm.mem.ppu.square_sprite_address == SpriteTableAddress::Base {
-            mesh.set_uniform(String::from("pattern"), pattern_0.as_uniform_value());
-          } else {
-            mesh.set_uniform(String::from("pattern"), pattern_1.as_uniform_value());
-          }
-          mesh.set_uniform(String::from("tile_index"), UniformValue::Float(tile_index as f32));
-        }
-
-        mesh.set_uniform(String::from("bgcolor"), UniformValue::Int(vm.mem.ppu.bg_color as i32));
-        let sprite_palette_0 = vm.mem.ppu.sprite_palette_0;
-        mesh.set_uniform(String::from("sprite_palette_0"), UniformValue::IntVec3(sprite_palette_0.0 as i32, sprite_palette_0.1 as i32, sprite_palette_0.2 as i32));
-        let sprite_palette_1 = vm.mem.ppu.sprite_palette_1;
-        mesh.set_uniform(String::from("sprite_palette_1"), UniformValue::IntVec3(sprite_palette_1.0 as i32, sprite_palette_1.1 as i32, sprite_palette_1.2 as i32));
-        let sprite_palette_2 = vm.mem.ppu.sprite_palette_2;
-        mesh.set_uniform(String::from("sprite_palette_2"), UniformValue::IntVec3(sprite_palette_2.0 as i32, sprite_palette_2.1 as i32, sprite_palette_2.2 as i32));
-        let sprite_palette_3 = vm.mem.ppu.sprite_palette_3;
-        mesh.set_uniform(String::from("sprite_palette_3"), UniformValue::IntVec3(sprite_palette_3.0 as i32, sprite_palette_3.1 as i32, sprite_palette_3.2 as i32));
-
-        i += 1;
-      }
-
       unsafe {
         gl::Clear(gl::COLOR_BUFFER_BIT);
       }
-      if vm.mem.ppu.show_bg {
-        bg.make_current();
-        screen.draw();
-      }
-      if vm.mem.ppu.show_sprites {
-        sprite_program.make_current();
-        for sprite in sprite_meshes.iter_mut() {
-          sprite.draw();
-        }
-      }
+
+      scanline_prog.make_current();
+      scanline_screen.draw();
 
       shell.swap_buffers();
     }
